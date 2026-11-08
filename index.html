@@ -4,650 +4,1228 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Le Réveil — Jeu d'Énigme</title>
+<title>Le Réveil — Les Dix Portes</title>
 <style>
-  :root { font-family: Georgia, 'Times New Roman', serif; }
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  html, body { height: 100%; background: #060608; overflow: hidden; }
-  #wrap { position: relative; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
-  #stage { position: relative; width: 960px; height: 600px; max-width: 100vw; max-height: 100vh; aspect-ratio: 16/10; }
-  canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; cursor: pointer; }
-  #dialogue {
-    position: absolute; left: 4%; right: 4%; bottom: 3%;
-    min-height: 74px; padding: 12px 18px;
-    background: rgba(8, 10, 14, 0.92); border: 1px solid #3a3f52; border-radius: 8px;
-    color: #d8dcea; font-size: 17px; line-height: 1.45;
-    box-shadow: 0 4px 18px rgba(0,0,0,0.6);
-    display: none;
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html, body { height:100%; background:#030304; overflow:hidden; }
+  body { font-family: Georgia, 'Times New Roman', serif; }
+  #wrap { position:relative; width:100%; height:100%; display:flex; align-items:center; justify-content:center; }
+  #stage { position:relative; width:1024px; height:640px; max-width:100vw; max-height:100vh; aspect-ratio:16/10; }
+  canvas { position:absolute; inset:0; width:100%; height:100%; display:block; }
+  #ui { position:absolute; inset:0; pointer-events:none; }
+  .panel {
+    position:absolute; background:rgba(10,12,18,.94); border:1px solid #3a3f52; border-radius:8px;
+    color:#d8dcea; box-shadow:0 6px 24px rgba(0,0,0,.65);
   }
-  #dialogue .who { color: #9fb4d8; font-style: italic; font-size: 14px; margin-bottom: 4px; }
-  #dialogue .hint { position: absolute; right: 14px; bottom: 6px; color: #5a6172; font-size: 12px; font-family: system-ui, sans-serif; }
-  #intro {
-    position: absolute; inset: 0; background: #000; color: #cfd6e4;
-    display: flex; align-items: center; justify-content: center; text-align: center;
-    font-size: 26px; letter-spacing: 1px; cursor: pointer;
-    transition: opacity 1.2s ease; z-index: 5;
+  #dialogue { left:4%; right:4%; bottom:3%; min-height:70px; padding:12px 18px; display:none; pointer-events:auto; cursor:pointer; }
+  #dialogue .who { color:#9fb4d8; font-style:italic; font-size:14px; margin-bottom:4px; }
+  #dialogue .txt { font-size:17px; line-height:1.45; }
+  #dialogue .hint { position:absolute; right:14px; bottom:6px; color:#5a6172; font-size:12px; font-family:system-ui,sans-serif; }
+  #hud { position:absolute; top:10px; left:12px; display:none; gap:8px; pointer-events:auto; }
+  .btn {
+    font-family:system-ui,sans-serif; font-size:13px; color:#c8cede; background:rgba(16,19,28,.9);
+    border:1px solid #3a3f52; border-radius:6px; padding:6px 12px; cursor:pointer; user-select:none;
   }
-  #intro .sub { display: block; margin-top: 14px; font-size: 15px; color: #5a6172; font-family: system-ui, sans-serif; }
-  #keypad {
-    position: absolute; left: 50%; top: 46%; transform: translate(-50%, -50%);
-    background: #10131c; border: 1px solid #3a3f52; border-radius: 10px;
-    padding: 18px 20px; display: none; z-index: 4; text-align: center;
-    box-shadow: 0 8px 30px rgba(0,0,0,0.7);
-  }
-  #keypad .disp {
-    font-family: 'Courier New', monospace; font-size: 30px; letter-spacing: 12px;
-    background: #06080d; border: 1px solid #23283a; color: #7fd18a;
-    padding: 8px 10px 8px 20px; border-radius: 4px; margin-bottom: 12px; min-width: 190px;
-  }
-  #keypad .disp.err { color: #e06c6c; }
-  #keypad table { margin: 0 auto; border-spacing: 6px; }
-  #keypad button {
-    width: 52px; height: 44px; font-size: 20px; font-family: system-ui, sans-serif;
-    background: #1c2130; color: #d8dcea; border: 1px solid #3a3f52; border-radius: 6px; cursor: pointer;
-  }
-  #keypad button:hover { background: #2a3145; }
-  #keypad .close { margin-top: 10px; font-size: 13px; color: #5a6172; background: none; border: none; cursor: pointer; width: auto; height: auto; }
-  #inv {
-    position: absolute; top: 3%; right: 3%; display: none; gap: 8px; z-index: 3;
-  }
+  .btn:hover { background:#242a3c; color:#fff; }
+  #inv { position:absolute; top:10px; right:12px; display:none; gap:6px; pointer-events:auto; }
   .slot {
-    width: 46px; height: 46px; border: 1px dashed #4a5166; border-radius: 6px;
-    background: rgba(10,12,18,0.8); color: #9fb4d8; font-size: 26px; text-align: center; line-height: 44px;
+    width:44px; height:44px; border:1px solid #4a5166; border-radius:6px; background:rgba(12,14,20,.9);
+    display:flex; align-items:center; justify-content:center; font-size:22px; cursor:default;
   }
+  .slot .tip { display:none; position:absolute; top:50px; right:0; padding:6px 10px; white-space:nowrap;
+    background:rgba(10,12,18,.97); border:1px solid #3a3f52; border-radius:6px; font-family:system-ui,sans-serif; font-size:12px; }
+  .slot { position:relative; }
+  .slot:hover .tip { display:block; }
   #toast {
-    position: absolute; top: 3%; left: 50%; transform: translateX(-50%);
-    background: rgba(20,24,34,0.95); border: 1px solid #3a3f52; color: #d8dcea;
-    padding: 8px 16px; border-radius: 6px; font-size: 15px; display: none; z-index: 6;
-    font-family: system-ui, sans-serif;
+    position:absolute; top:64px; left:50%; transform:translateX(-50%);
+    background:rgba(20,24,34,.95); border:1px solid #3a3f52; color:#d8dcea;
+    padding:8px 16px; border-radius:6px; font-size:15px; display:none; font-family:system-ui,sans-serif;
+    transition:opacity .5s; pointer-events:none;
   }
+  #journal {
+    left:50%; top:50%; transform:translate(-50%,-50%); width:min(560px,92%); max-height:80%;
+    padding:20px 24px; display:none; pointer-events:auto; overflow:auto; font-size:15px;
+  }
+  #journal h2 { font-size:20px; color:#9fb4d8; margin-bottom:12px; font-weight:normal; }
+  #journal ul { list-style:none; }
+  #journal li { padding:7px 0; border-bottom:1px solid #23283a; line-height:1.4; }
+  #journal li .frag { color:#ffd479; font-weight:bold; }
+  #journal .close { position:absolute; top:10px; right:14px; cursor:pointer; color:#5a6172; font-family:system-ui,sans-serif; }
+  #menu-dom { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; pointer-events:auto; }
+  #menu-dom .title { font-size:44px; color:#e6e9f2; letter-spacing:6px; text-shadow:0 0 30px rgba(120,140,200,.35); }
+  #menu-dom .subtitle { font-size:16px; color:#7a8298; letter-spacing:2px; margin-bottom:16px; font-family:system-ui,sans-serif; }
+  .mbtn {
+    font-family:Georgia,serif; font-size:20px; color:#d8dcea; background:rgba(16,19,28,.85);
+    border:1px solid #3a3f52; border-radius:8px; padding:10px 44px; cursor:pointer; letter-spacing:1px; min-width:300px;
+    transition: all .15s;
+  }
+  .mbtn:hover { background:#242a3c; color:#fff; box-shadow:0 0 18px rgba(120,140,200,.25); }
+  .mbtn:disabled { opacity:.35; cursor:default; }
+  #menu-dom .foot { position:absolute; bottom:14px; font-size:12px; color:#3d4356; font-family:system-ui,sans-serif; }
 </style>
 </head>
 <body>
 <div id="wrap"><div id="stage">
-  <canvas id="cv" width="960" height="600"></canvas>
-  <div id="intro"><div>« Où... où suis-je ? »<span class="sub">Clique pour te réveiller</span></div></div>
-  <div id="dialogue"><div class="who"></div><div class="txt"></div><div class="hint">clique pour continuer</div></div>
-  <div id="keypad"></div>
-  <div id="inv"></div>
-  <div id="toast"></div>
+  <canvas id="cv" width="1024" height="640"></canvas>
+  <div id="ui">
+    <div id="menu-dom">
+      <div class="title">LE RÉVEIL</div>
+      <div class="subtitle">— LES DIX PORTES —</div>
+      <button class="mbtn" id="btn-new">Nouvelle partie</button>
+      <button class="mbtn" id="btn-continue" style="display:none">Continuer</button>
+      <button class="mbtn" id="btn-help">Comment jouer</button>
+      <div class="foot">Clique pour marcher · clique sur les objets pour agir · J : journal</div>
+    </div>
+    <div id="hud">
+      <button class="btn" id="btn-journal">📖 Journal (J)</button>
+      <button class="btn" id="btn-hint">💡 Indice</button>
+      <button class="btn" id="btn-sound">🔊</button>
+    </div>
+    <div id="inv"></div>
+    <div id="toast"></div>
+    <div id="dialogue" class="panel"><div class="who"></div><div class="txt"></div><div class="hint">clique pour continuer</div></div>
+    <div id="journal" class="panel"><div class="close">✕</div><h2>Journal</h2><ul id="jlist"></ul></div>
+  </div>
 </div></div>
 
 <script>
 (function () {
-  "use strict";
-  const cv = document.getElementById('cv');
-  const ctx = cv.getContext('2d');
-  const W = 960, H = 600;
+"use strict";
+// ============================== BASE ==============================
+const cv = document.getElementById('cv'), ctx = cv.getContext('2d');
+const W = 1024, H = 640, FLOOR_TOP = 470;
+function $(id){ return document.getElementById(id); }
+function clamp(v,a,b){ return v<a?a:(v>b?b:v); }
+function rr(x,y,w,h,r){ ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r);
+  ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
 
-  // ---------- État ----------
-  const S = {
-    awake: false,          // le personnage s'est réveillé (intro faite)
-    wakeAnim: 0,           // 0..1 animation de réveil
-    lookedSelf: 0,         // nb de fois qu'on s'examine
-    doorTries: 0,
-    windowSeen: 0,         // 0 jamais, 1 silhouette vue, 2 elle se cache, 3 œil qui regarde
-    noteFound: false,
-    doorOpen: false,
-    ended: false,
-    time: 0
-  };
-  const CODE = "2049";
-  const queue = [];        // file de dialogues
-  let talking = false;
+// ============================== AUDIO ==============================
+const AU = { ctx:null, on:true };
+function actx(){ if(!AU.ctx){ try { AU.ctx = new (window.AudioContext||window.webkitAudioContext)(); } catch(e){ AU.on=false; } } return AU.ctx; }
+function beep(freq, dur, type, vol, delay){
+  if(!AU.on) return; const c = actx(); if(!c) return;
+  const t0 = c.currentTime + (delay||0);
+  const o = c.createOscillator(), g = c.createGain();
+  o.type = type||'sine'; o.frequency.value = freq;
+  g.gain.setValueAtTime(0.0001, t0);
+  g.gain.exponentialRampToValueAtTime(vol||0.08, t0 + 0.02);
+  g.gain.exponentialRampToValueAtTime(0.0001, t0 + (dur||0.2));
+  o.connect(g); g.connect(c.destination);
+  o.start(t0); o.stop(t0 + (dur||0.2) + 0.05);
+}
+const SND = {
+  click(){ beep(660,0.06,'triangle',0.05); },
+  ok(){ beep(523,0.12,'sine',0.09); beep(784,0.25,'sine',0.09,0.1); },
+  win(){ [523,659,784,1047].forEach(function(f,i){ beep(f,0.3,'sine',0.08,i*0.12); }); },
+  err(){ beep(140,0.25,'sawtooth',0.06); },
+  door(){ beep(90,0.5,'sine',0.12); beep(60,0.7,'sine',0.1,0.08); },
+  note(n){ beep(n,0.35,'triangle',0.09); },
+  step(){ beep(90+Math.random()*30,0.03,'triangle',0.02); }
+};
 
-  // ---------- Utilitaires ----------
-  function $(id) { return document.getElementById(id); }
-  function say(who, lines) {
-    for (const l of lines) queue.push({ who: who, txt: l });
-    if (!talking) nextLine();
+// ============================== ÉTAT ==============================
+const G = {
+  scene:'menu', room:0, t:0, startStamp:0, playMs:0, hintsUsed:0,
+  player:{x:512,y:540,tx:512,ty:540,dir:1,moving:false,pending:null,anim:0},
+  flags:{}, inv:[], journal:[], fragments:[],
+  dlg:[], dlgOpen:false, puzzle:null, fading:0, fadeDir:0, ended:false, hover:null
+};
+function saveGame(){
+  try {
+    localStorage.setItem('reveil_save', JSON.stringify({
+      room:G.room, flags:G.flags, inv:G.inv, journal:G.journal, fragments:G.fragments,
+      playMs:G.playMs, hintsUsed:G.hintsUsed, hintIdx:hintIdx
+    }));
+  } catch(e){}
+}
+function loadGame(){
+  try {
+    const s = JSON.parse(localStorage.getItem('reveil_save'));
+    if(!s) return null;
+    G.room=s.room; G.flags=s.flags; G.inv=s.inv||[]; G.journal=s.journal||[];
+    G.fragments=s.fragments||[]; G.playMs=s.playMs||0; G.hintsUsed=s.hintsUsed||0;
+    hintIdx=s.hintIdx||{};
+    return true;
+  } catch(e){ return null; }
+}
+const hasSave = function(){ try { return !!localStorage.getItem('reveil_save'); } catch(e){ return false; } }();
+
+// ============================== UI DOM ==============================
+function say(who, lines, after){
+  G.dlgAfter = after||null;
+  if(typeof lines === 'string') lines = [lines];
+  for (const l of lines) G.dlg.push({who:who, txt:l});
+  if(!G.dlgOpen) nextLine();
+}
+function nextLine(){
+  const d = $('dialogue');
+  const item = G.dlg.shift();
+  if(!item){ G.dlgOpen=false; d.style.display='none'; const a=G.dlgAfter; G.dlgAfter=null; if(a) a(); return; }
+  G.dlgOpen = true; d.style.display='block';
+  d.querySelector('.who').textContent = item.who ? '— ' + item.who : '';
+  d.querySelector('.txt').textContent = item.txt;
+}
+$('dialogue').addEventListener('click', nextLine);
+function toast(msg){
+  const t=$('toast'); t.textContent=msg; t.style.display='block'; t.style.opacity=1;
+  clearTimeout(toast._t); toast._t=setTimeout(function(){ t.style.opacity=0; setTimeout(function(){ t.style.display='none'; },500); }, 2800);
+}
+function addItem(icon,label){
+  if(G.inv.indexOf(icon)>=0) return;
+  G.inv.push(icon);
+  const inv=$('inv'); inv.style.display='flex';
+  const s=document.createElement('div'); s.className='slot';
+  s.innerHTML = '<span>'+icon+'</span><div class="tip">'+label+'</div>';
+  inv.appendChild(s); saveGame();
+}
+function jadd(txt){ G.journal.push(txt); renderJournal(); saveGame(); }
+function jfrag(chif, roomName){
+  if(G.fragments.indexOf(chif)>=0) return;
+  G.fragments.push(chif);
+  jadd(roomName+' — un chiffre gravé sur le chambranle : <span class="frag">'+chif+'</span>');
+  toast('Fragment trouvé : '+chif+' (noté dans le journal)');
+}
+function renderJournal(){
+  const ul=$('jlist'); ul.innerHTML='';
+  if(!G.journal.length){ ul.innerHTML='<li style="border:none;color:#5a6172">Rien encore. Explore les lieux…</li>'; return; }
+  G.journal.forEach(function(j){ const li=document.createElement('li'); li.innerHTML=j; ul.appendChild(li); });
+}
+$('btn-journal').onclick=function(){ $('journal').style.display = $('journal').style.display==='block'?'none':'block'; renderJournal(); };
+$('journal').querySelector('.close').onclick=function(){ $('journal').style.display='none'; };
+$('btn-sound').onclick=function(){ AU.on=!AU.on; $('btn-sound').textContent = AU.on?'🔊':'🔇'; if(AU.on) SND.click(); };
+
+// ============================== INDICES ==============================
+let hintIdx = {};
+const HINTS = [
+  ["Cette pièce te semble vide ? Fouille la chaise : quelque chose est coincé sous le coussin.",
+   "Le papier donne quatre chiffres. Le clavier à côté de la porte attend exactement ces chiffres.",
+   "Le code de la porte est 2 0 4 9."],
+  ["Il fait noir ici. Regarde bien le porte-manteau près de l'entrée.",
+   "Avec la lampe, observe chaque tableau : chacun cache un symbole. Note-les.",
+   "Le griffon sur le sol dit : « la nuit précède l'aube ». Lune, puis étoile, puis soleil. Ouvre le cadran de la porte et choisis dans cet ordre."],
+  ["Le bureau au centre de la bibliothèque cache une lettre. Commence par là.",
+   "La lettre parle de couleurs : « vert, rouge, or, bleu ». Il y a quatre livres qui dépassent des rayonnages.",
+   "Tire les livres dans cet ordre : VERT, ROUGE, OR, BLEU."],
+  ["Le tableau au mur montre des notes. Approche-toi du piano pour commencer.",
+   "Remonte la boîte à musique sur la commode : elle joue une mélodie. Mémorise-la, puis rejoue-la sur le piano.",
+   "La mélodie est : SOL, MI, DO, MI, SOL, SOL. Rejoue ces touches dans cet ordre."],
+  ["Les tuyaux de la cuisine doivent relier la vanne (en haut à gauche) à l'évier (en bas à droite).",
+   "Clique sur un tuyau pour le faire pivoter. Suis le chemin depuis la vanne et corrige chaque morceau.",
+   "Chaque tuyau a deux extrémités qui doivent se répondre. Commence par la vanne et avance case par case : quand l'eau coule sans fuite, la porte cède."],
+  ["Cette serre baigne dans la lumière. Il y a un mécanisme de miroirs au fond, près de la grande plante.",
+   "Le rayon du soleil entre par la gauche. Fais-le rebondir de miroir en miroir jusqu'à la fleur noire.",
+   "Miroir du haut penche comme un backslash (\\), miroir du bas comme un slash (/), dernier miroir comme un slash aussi. Le rayon descend, file à droite, puis remonte jusqu'à la fleur."],
+  ["Ce bureau est un désordre organisé. Derrière le panneau à fils, il faut relier chaque symbole à son jumeau.",
+   "Le coffre-fort, lui, demande un code. Relis ce que dit la plaque au-dessus : « Ce qui t'a ouvert la première porte… »",
+   "Le code du coffre est 2 0 4 9 — le même que ta première porte. Il contient la clé de la cave."],
+  ["Le mécanisme de la cave est une tour : déplace les disques d'une pile à l'autre. Règle : jamais un grand disque sur un plus petit.",
+   "Chaque pile est un piquet. Objectif : amener les 4 disques sur le piquet de droite. Prends ton temps, une pièce à la fois.",
+   "Astuce classique : 4 disques = 15 coups. Déplace la tour en t'aidant du piquet du milieu comme zone tampon."],
+  ["La salle des machines : trois roues crantées. Chaque crantage porte une flèche. Clique une roue pour la faire tourner d'un cran.",
+   "Les flèches des trois roues doivent toutes pointer vers le haut en même temps.",
+   "Clique chaque roue jusqu'à ce que sa flèche regarde le plafond. Tu entendra un déclic quand une roue est bonne."],
+  ["C'est la dernière porte. Le code est long — 5 chiffres. Ton journal contient des fragments…",
+   "La plaque dit : « L'ordre est celui de ta marche. » Les fragments, dans l'ordre où tu les as trouvés en avançant.",
+   "Le code final est 4 7 1 8 5."]
+];
+$('btn-hint').onclick=function(){
+  const idx = G.room; const arr = HINTS[idx]||[]; if(!arr.length){ toast("Pas d'indice ici."); return; }
+  const i = Math.min(hintIdx[idx]||0, arr.length-1);
+  hintIdx[idx] = (hintIdx[idx]||0)+1; G.hintsUsed++;
+  if(i===arr.length-1 && hintIdx[idx] > arr.length){ hintIdx[idx]=arr.length; }
+  say('La voix derrière la vitre', [arr[Math.min(i, arr.length-1)]]);
+  saveGame();
+};
+
+// ============================== DONNÉES DES PIÈCES ==============================
+// palette : [murHaut, murBas, sol, accent]
+const ROOMS = [
+  { nom:'La Chambre',      pal:['#171a22','#232733','#2e2a24','#c9a44c'], intro:[
+      "Tu reprends tes esprits. Cette chambre n'a qu'une porte… et une vitre.",
+      "Derrière la vitre, une silhouette t'observait. Elle vient de se retirer dans l'ombre.",
+      "Trouve un moyen d'ouvrir cette porte."] },
+  { nom:'Le Couloir',      pal:['#14161e','#1e2130','#26222c','#8a6db0'], intro:[
+      "Le couloir est plongé dans la pénombre. Des tableaux. Un porte-manteau.",
+      "Sur le sol, un griffon de pierre veille. Il semble dire quelque chose…"] },
+  { nom:'La Bibliothèque', pal:['#1a1610','#241f16','#2c2418','#b08d4f'], intro:[
+      "Des rayonnages à perte de vue. L'odeur du vieux papier.",
+      "Quatre livres dépassent des étagères. Comme s'ils attendaient qu'on les tire."] },
+  { nom:'Le Salon de Musique', pal:['#181420','#211a2c','#30283a','#c98ab0'], intro:[
+      "Un piano droit. Une commode. Une boîte à musique posée dessus.",
+      "Le tableau au mur détaille les notes… ut, ré, mi, sol."] },
+  { nom:'La Cuisine',      pal:['#121a18','#18262a','#24343a','#5fb0a0'], intro:[
+      "Une cuisine désaffectée. Des tuyaux courent le long des murs.",
+      "Quelque part, une vanne attend qu'on l'ouvre. Mais l'eau doit trouver son chemin."] },
+  { nom:'La Serre',        pal:['#101a10','#182818','#20301e','#7fd18a'], intro:[
+      "Une serre de verre. Le soleil y entre à flots. Des plantes partout, une fleur noire au fond.",
+      "Et là, sur la baie vitrée de droite… la silhouette. Elle te regarde. Elle ne fuit pas cette fois.",
+      "Elle semble vouloir que tu réussisses."] },
+  { nom:'Le Bureau',       pal:['#161418','#221e26','#2a2630','#c9a1d8'], intro:[
+      "Un bureau en désordre. Des papiers, une lampe verte, un coffre-fort.",
+      "Sur le mur, un panneau électrique aux fils emmêlés."] },
+  { nom:'La Cave',         pal:['#101012','#181619','#221e24','#b04f4f'], intro:[
+      "L'air est humide. Au centre, un étrange mécanisme de bois : trois piquets, des disques de tailles différentes.",
+      "Un gravage au-dessus : « Unité d'abord, le monde ensuite. »"] },
+  { nom:'La Salle des Machines', pal:['#12161a','#1a2028','#232a34','#d8913f'], intro:[
+      "Chaleur de métal et de vapeur. Trois immenses roues crantées occupent le mur.",
+      "Chacune porte une flèche peinte. Un panneau : « ALIGNEMENT TOTAL — PORTE 10 »."] },
+  { nom:'Le Seuil',        pal:['#1a1a20','#26262e','#1c1c22','#e8e2d0'], intro:[
+      "Une dernière pièce. Nue. Une porte monumentale, sans poignée.",
+      "Une plaque de laiton : « CINQ CHIFFRES. L'ORDRE EST CELUI DE TA MARCHE. »",
+      "Au-dessus de la porte… une vitre. Et derrière, elle. Elle te sourit."] }
+];
+
+// fragments par pièce (attribué à la résolution)
+const FRAG = ['4','7','1','8','5', null, null, null, null, null];
+const FINAL_CODE = '47185';
+
+// ============================== HOTSPOTS ==============================
+function hotspots(){
+  const F = G.flags;
+  switch(G.room){
+    case 0: return [
+      {id:'win',  x:70,  y:120, w:180, h:210, ax:200, ay:520, label:'La vitre'},
+      {id:'bed',  x:300, y:250, w:200, h:140, ax:400,  ay:470, label:'Le lit'},
+      {id:'chair',x:560, y:330, w:150, h:160, ax:640,  ay:500, label:'La chaise'},
+      {id:'door', x:820, y:110, w:150, h:360, ax:800,  ay:510, label:'La porte'}
+    ];
+    case 1: return [
+      {id:'rack', x:120, y:300, w:120, h:220, ax:180, ay:510, label:'Le porte-manteau'},
+      {id:'t1',   x:300, y:150, w:110, h:130, ax:355, ay:500, label:'Tableau 1'},
+      {id:'t2',   x:430, y:150, w:110, h:130, ax:485, ay:500, label:'Tableau 2'},
+      {id:'t3',   x:560, y:150, w:110, h:130, ax:615, ay:500, label:'Tableau 3'},
+      {id:'grif', x:450, y:520, w:120, h:70,  ax:510, ay:580, label:'Le griffon de pierre'},
+      {id:'door', x:850, y:120, w:130, h:350, ax:830, ay:510, label:'La porte'}
+    ];
+    case 2: return [
+      {id:'desk', x:440, y:330, w:140, h:110, ax:510, ay:490, label:'Le bureau'},
+      {id:'b1',   x:120, y:180, w:60,  h:160, ax:150, ay:500, label:'Livre vert'},
+      {id:'b2',   x:230, y:180, w:60,  h:160, ax:260, ay:500, label:'Livre rouge'},
+      {id:'b3',   x:340, y:180, w:60,  h:160, ax:370, ay:500, label:'Livre or'},
+      {id:'b4',   x:700, y:180, w:60,  h:160, ax:730, ay:500, label:'Livre bleu'},
+      {id:'door', x:880, y:120, w:120, h:350, ax:860, ay:510, label:'La porte'}
+    ];
+    case 3: return [
+      {id:'tabl', x:120, y:130, w:180, h:120, ax:210, ay:500, label:'Le tableau'},
+      {id:'box',  x:420, y:300, w:110, h:100, ax:475, ay:480, label:'La boîte à musique'},
+      {id:'piano',x:600, y:280, w:240, h:180, ax:720, ay:500, label:'Le piano'},
+      {id:'door', x:120, y:120, w:120, h:350, ax:200, ay:510, label:'La porte'}
+    ];
+    case 4: return [
+      {id:'fridge', x:130, y:170, w:140, h:280, ax:200, ay:500, label:'Le garde-manger'},
+      {id:'table', x:380, y:360, w:180, h:100, ax:470, ay:480, label:'La table'},
+      {id:'valve', x:640, y:150, w:70,  h:70,  ax:675, ay:500, label:'La vanne'},
+      {id:'door',  x:880, y:130, w:120, h:340, ax:860, ay:510, label:'La porte du cellier'}
+    ];
+    case 5: return [
+      {id:'silh',  x:760, y:120, w:200, h:280, ax:740, ay:500, label:'La silhouette'},
+      {id:'flower',x:120, y:150, w:100, h:140, ax:170, ay:480, label:'La fleur noire'},
+      {id:'mirror',x:400, y:250, w:260, h:240, ax:530, ay:510, label:'Le mécanisme de miroirs'},
+      {id:'door',  x:60,  y:120, w:130, h:350, ax:130, ay:510, label:'La porte de la serre'}
+    ];
+    case 6: return [
+      {id:'wires', x:180, y:170, w:220, h:220, ax:290, ay:500, label:'Le panneau électrique'},
+      {id:'lamp',  x:460, y:190, w:90,  h:120, ax:505, ay:490, label:'La lampe verte'},
+      {id:'safe',  x:650, y:200, w:140, h:130, ax:720, ay:490, label:'Le coffre-fort'},
+      {id:'door',  x:880, y:130, w:120, h:340, ax:860, ay:510, label:'La porte de la cave'}
+    ];
+    case 7: return [
+      {id:'hanoi', x:390, y:200, w:260, h:280, ax:520, ay:510, label:'Le mécanisme de bois'},
+      {id:'sign',  x:100, y:140, w:180, h:80,  ax:190, ay:500, label:'Le gravage'},
+      {id:'door',  x:850, y:130, w:130, h:340, ax:830, ay:510, label:'La grille de fer'}
+    ];
+    case 8: return [
+      {id:'d1',   x:280, y:160, w:120, h:240, ax:340, ay:500, label:'Roue 1'},
+      {id:'d2',   x:450, y:160, w:120, h:240, ax:510, ay:500, label:'Roue 2'},
+      {id:'d3',   x:620, y:160, w:120, h:240, ax:680, ay:500, label:'Roue 3'},
+      {id:'panel',x:100, y:300, w:120, h:110, ax:160, ay:500, label:'Le panneau'},
+      {id:'door', x:850, y:110, w:140, h:370, ax:840, ay:510, label:'La porte 10'}
+    ];
+    case 9: return [
+      {id:'glass', x:460, y:110, w:110, h:130, ax:515, ay:440, label:'La vitre'},
+      {id:'plate', x:430, y:270, w:170, h:40,  ax:515, ay:470, label:'La plaque de laiton'},
+      {id:'door',  x:410, y:330, w:210, h:250, ax:515, ay:600, label:'La porte monumentale'}
+    ];
   }
-  function nextLine() {
-    const d = $('dialogue');
-    const item = queue.shift();
-    if (!item) { talking = false; d.style.display = 'none'; return; }
-    talking = true;
-    d.style.display = 'block';
-    d.querySelector('.who').textContent = item.who ? '— ' + item.who : '';
-    d.querySelector('.txt').textContent = item.txt;
-  }
-  function toast(msg) {
-    const t = $('toast');
-    t.textContent = msg;
-    t.style.display = 'block';
-    clearTimeout(toast._t);
-    toast._t = setTimeout(function () { t.style.display = 'none'; }, 2600);
-  }
-  function addItem(label) {
-    const inv = $('inv');
-    inv.style.display = 'flex';
-    const s = document.createElement('div');
-    s.className = 'slot'; s.title = 'Note trouvée sous le coussin';
-    s.textContent = label;
-    inv.appendChild(s);
-  }
+  return [];
+}
 
-  // ---------- Hotspots ----------
-  const hotspots = [
-    { id: 'chair',  x: 300, y: 330, w: 210, h: 230, label: 'La chaise' },
-    { id: 'self',   x: 330, y: 190, w: 150, h: 150, label: 'Toi' },
-    { id: 'window', x: 60,  y: 130, w: 170, h: 200, label: 'La vitre' },
-    { id: 'door',   x: 700, y: 110, w: 170, h: 330, label: 'La porte' },
-    { id: 'floor',  x: 380, y: 520, w: 220, h: 60,  label: 'Le sol' }
-  ];
+// ============================== ACTIONS ==============================
+function interact(id){
+  const F = G.flags, room = G.room;
+  if(room===0){
+    if(id==='win'){ say('Toi', F.winSeen?["Elle est partie. Mais je sais qu'elle revient."]:
+      ["Une silhouette ! Elle me regardait… elle s'est élancée dans l'ombre dès que je me suis levé.",
+       "Qui est-ce ? Pourquoi m'observer ?"]); F.winSeen=true; }
+    else if(id==='bed'){ say('Toi', ["Un lit défait. Les miens ? Des traces de sommeil récent.",
+      "Sous l'oreiller… rien. On a fouillé cette chambre avant mon réveil."]); }
+    else if(id==='chair'){ if(!F.note){ F.note=true; addItem('📄','Note froissée');
+        say('Toi',["Quelque chose est coincé sous le coussin de cette chaise.",
+          "Un bout de papier : « 2 0 4 9 ». Ça sent le code…"]);
+        jadd('Chambre — la note sous le coussin : <span class="frag">2 0 4 9</span>');
+      } else say('Toi',["Une simple chaise. Elle a livré son secret."]); }
+    else if(id==='door'){
+      if(F.doorOpen0){ goRoom(1); return; }
+      if(!F.note){ say('Toi',["Verrouillée. Un petit clavier numérique à côté : 4 chiffres.",
+        "Il me faut un code… il doit être caché dans cette pièce."]); return; }
+      PZ.keypad.open('La porte de la chambre', 4, function(code){ return code==='2049'; }, function(){
+        SND.door(); F.doorOpen0=true; onRoomSolved(0);
+        say('Toi',["*BIP* Le verrou saute ! La porte s'ouvre sur un couloir sombre…"]);
+      });
+    }
+  }
+  else if(room===1){
+    if(id==='rack'){ if(!F.torch){ F.torch=true; addItem('🔦','Lampe torche');
+        say('Toi',["Une lampe torche accrochée au porte-manteau. Elle fonctionne encore.",
+          "Éclairons ces tableaux de plus près."]); SND.click(); }
+      else say('Toi',["Le porte-manteau est vide."]); }
+    else if(id==='t1'){ say('Toi',[F.torch?"À la lumière de la torche : ce tableau montre… une LUNE sur une mer d'encre.":"Trop sombre pour distinguer quoi que ce soit."]); F.s1=true; }
+    else if(id==='t2'){ say('Toi',[F.torch?"Une ÉTOILE filante au-dessus d'une ville endormie.":"Trop sombre."]); F.s2=true; }
+    else if(id==='t3'){ say('Toi',[F.torch?"Un SOLEIL levant, orange et immense.":"Trop sombre."]); F.s3=true; }
+    else if(id==='grif'){ say('Le griffon (gravé dans la pierre)',[F.torch?"« La nuit précède l'aube. C'est l'ordre des choses. »":"…"]);}
+    else if(id==='door'){
+      if(F.doorOpen1){ goRoom(2); return; }
+      PZ.sym.open(function(seq){
+        if(seq.join()==='lune,étoile,soleil'){ SND.door(); F.doorOpen1=true; onRoomSolved(1);
+          say('Toi',["Le griffon s'éclaire de l'intérieur. Le verrou cède.",
+            "Un chiffre apparaît sur le chambranle, gravé dans la pierre : un « 7 »."]);
+          return true; }
+        return false;
+      });
+    }
+  }
+  else if(room===2){
+    if(id==='desk'){ if(!F.letter){ F.letter=true;
+        say('Toi',["Sur le bureau, une lettre à moitié écrite. L'encre est fraîche :",
+          "« …je les ai rangés comme elle me l'avait demandé : le VERT, puis le ROUGE, puis l'OR, enfin le BLEU… »"]);
+        jadd('Bibliothèque — la lettre du bureau : <span class="frag">vert, rouge, or, bleu</span>');
+      } else say('Toi',["La lettre ne dit rien de plus."]); }
+    else if(id==='b1'){ pullBook('vert'); }
+    else if(id==='b2'){ pullBook('rouge'); }
+    else if(id==='b3'){ pullBook('or'); }
+    else if(id==='b4'){ pullBook('bleu'); }
+    else if(id==='door'){
+      if(F.doorOpen2){ goRoom(3); return; }
+      say('Toi',["La porte est condamnée par un mécanisme relié aux étagères.",
+        "Il faut tirer les livres dans le bon ordre."]);
+    }
+  }
+  else if(room===3){
+    if(id==='tabl'){ say('Toi',["Le tableau détaille les touches d'un clavier : DO RÉ MI FA SOL LA SI.",
+      "Étrange… c'est une leçon de solfège pour quelqu'un qui n'a jamais joué."]); }
+    else if(id==='box'){
+      say('Toi',["Une boîte à musique de cuivre. Remontons-la…"]);
+      G.melodyPlayed = true; PZ.piano.demo();
+    }
+    else if(id==='piano'){
+      PZ.piano.open(function(){ // rejouée correctement
+        SND.door(); F.doorOpen3=true; onRoomSolved(3);
+        say('Toi',["La mélodie s'élève, juste et claire. Un panneau du mur pivote : la porte s'ouvre.",
+          "Sur le seuil, un chiffre gravé : « 8 »."]);
+      });
+    }
+    else if(id==='door'){
+      if(F.doorOpen3){ goRoom(4); return; }
+      say('Toi',["La porte ne bouge pas. Mais elle semble… attendre une mélodie.",
+        "La boîte à musique sur la commode doit en connaître une."]);
+    }
+  }
+  else if(room===4){
+    if(id==='fridge'){ say('Toi',["Des étagères vides, un bocal de cornichons centenaire. Rien d'utile.",
+      "Mais au fond, une inscription : « L'eau ouvre le chemin. »"]); }
+    else if(id==='table'){ say('Toi',["Sur la table, une assiette encore tiède.",
+      "Quelqu'un mange ici. Quelqu'un qui me surveille et… me nourrit ?"]); }
+    else if(id==='valve'){
+      if(F.doorOpen4){ say('Toi',["L'eau coule désormais paisiblement vers le cellier."]); return; }
+      PZ.pipes.open(function(){
+        SND.door(); F.doorOpen4=true; onRoomSolved(4);
+        say('Toi',["L'eau jaillit, traverse les tuyaux sans fuite, et emplit l'évier.",
+          "Un clic. La porte du cellier est déverrouillée. Sur son cadre : un « 5 »."]);
+      });
+    }
+    else if(id==='door'){
+      if(F.doorOpen4){ goRoom(5); return; }
+      say('Toi',["La porte du cellier résiste. Près d'elle, un manomètre à zéro.",
+        "Il faut ouvrir la vanne et que l'eau trouve son chemin dans les tuyaux."]);
+    }
+  }
+  else if(room===5){
+    if(id==='silh'){
+      const n = (F.silhN||0)+1; F.silhN=n;
+      if(n===1) say('La silhouette',["…(elle pose sa main contre la vitre. Ses doigts y tracent lentement : « continue »)…",
+        "Toi : « Elle… elle m'encourage ? Elle sait où je dois aller. »"]);
+      else if(n===2) say('La silhouette',["…(elle désigne le fond de la serre, puis la fleur noire)…"]);
+      else say('La silhouette',["…(elle hoche la tête, et pour la première fois, tu crois voir un sourire)…"]);
+    }
+    else if(id==='flower'){ say('Toi',[F.doorOpen5?"La fleur noire s'est épanouie. Elle est magnifique.":"Une fleur noire, close, tournée vers le mécanisme. Elle attend la lumière."]); }
+    else if(id==='mirror'){
+      if(F.doorOpen5){ say('Toi',["Le rayon baigne la fleur. Le mécanisme est au repos."]); return; }
+      PZ.mirrors.open(function(){
+        SND.win(); F.doorOpen5=true; onRoomSolved(5);
+        say('Toi',["Le rayon file de miroir en miroir et frappe la fleur noire, qui s'épanouit en un éclat pourpre.",
+          "Dans son cœur, un levier. Tu l'abats : la porte de la serre s'ouvre."]);
+      });
+    }
+    else if(id==='door'){
+      if(F.doorOpen5){ goRoom(6); return; }
+      say('Toi',["La porte est scellée par le mécanisme des miroirs. La fleur doit s'ouvrir d'abord."]);
+    }
+  }
+  else if(room===6){
+    if(id==='lamp'){ say('Toi',["Une lampe verte de banquier, encore chaude.",
+      "On travaillait ici, il y a peu. Des plans froissés portent des croquis… de cette maison."]); }
+    else if(id==='wires'){
+      if(F.wiresDone){ say('Toi',["Le panneau ronronne doucement. Les symboles sont appariés."]); return; }
+      PZ.wires.open(function(){ F.wiresDone=true; SND.ok();
+        say('Toi',["Le dernier fil trouve son symbole. Le panneau ronronne : le courant est rétabli dans le coffre-fort."]);
+      });
+    }
+    else if(id==='safe'){
+      if(F.caveKey){ say('Toi',["Le coffre est vide : la clé de la cave est dans ma poche."]); return; }
+      if(!F.wiresDone){ say('Toi',["Le coffre est mort. Aucune lumière. Le panneau électrique doit d'abord être réparé.",
+        "Au-dessus du clavier, une plaque : « Ce qui t'a ouvert la première porte t'ouvrira celle-ci. »"]); return; }
+      PZ.keypad.open('Le coffre-fort', 4, function(c){ return c==='2049'; }, function(){
+        F.caveKey=true; addItem('🗝️','Clé de la cave'); SND.ok();
+        say('Toi',["*CLIC* Le coffre s'ouvre. À l'intérieur : une lourde clé de fer, étiquetée « CAVE ».",
+          "Et une photo… une silhouette devant une fenêtre. Le dos indique : « nous deux. »"]);
+        jadd('Le bureau — le coffre contenait une photo : « nous deux »…');
+      });
+    }
+    else if(id==='door'){
+      if(F.doorOpen6){ goRoom(7); return; }
+      if(!F.caveKey){ say('Toi',["La porte de la cave est fermée à clé. Une serrure de fer.",
+        "La clé doit être quelque part… le coffre-fort, peut-être."]); return; }
+      SND.door(); F.doorOpen6=true; onRoomSolved(5);
+      say('Toi',["La clé tourne dans la serrure. La porte de la cave grince dans l'obscurité…"]);
+      goRoom(7);
+    }
+  }
+  else if(room===7){
+    if(id==='sign'){ say('Le gravage',["« Unité d'abord, le monde ensuite. Ne pose jamais le grand sur le petit. »"]); }
+    else if(id==='hanoi'){
+      if(F.doorOpen7){ say('Toi',["Le mécanisme est au repos. Tu l'as dompté."]); return; }
+      PZ.hanoi.open(function(){
+        SND.door(); F.doorOpen7=true; onRoomSolved(6);
+        say('Toi',["Les quatre disques reposent enfin sur le piquet de droite.",
+          "Le mécanisme s'enfonce dans le sol : la grille de fer est ouverte."]);
+      });
+    }
+    else if(id==='door'){
+      if(F.doorOpen7){ goRoom(8); return; }
+      say('Toi',["La grille est verrouillée par le mécanisme central. Les disques doivent trouver leur place."]);
+    }
+  }
+  else if(room===8){
+    if(id==='panel'){ say('Le panneau',["« ALIGNEMENT TOTAL — PORTE 10. Les flèches se souviennent du ciel. »"]); }
+    else if(id==='d1'||id==='d2'||id==='d3'){
+      const i = id==='d1'?0:(id==='d2'?1:2);
+      MCH.discs[i] = (MCH.discs[i]+1)%8; SND.click();
+      if(MCH.discs[0]===0 && MCH.discs[1]===0 && MCH.discs[2]===0 && !G.flags.doorOpen8){
+        G.flags.doorOpen8=true; onRoomSolved(7); SND.win();
+        say('Toi',["*CLAC* Les trois flèches pointent le ciel. La machine exhale un grand souffle de vapeur.",
+          "Au fond, la PORTE 10 se déverrouille dans un grondement."]);
+      } else if(MCH.discs[i]===0){ SND.ok(); toast('Déclic… cette roue est alignée.'); }
+    }
+    else if(id==='door'){
+      if(G.flags.doorOpen8){ goRoom(9); return; }
+      say('Toi',["La porte 10 est scellée. « ALIGNEMENT TOTAL », dit le panneau.",
+        "Il faut aligner les flèches des trois roues."]);
+    }
+  }
+  else if(room===9){
+    if(id==='glass'){ say('La silhouette',["…(elle t'observe, apaisée. Sa main reste posée contre la vitre)…",
+      "…(ses lèvres bougent derrière le verre : « tu y es presque »)…"]); }
+    else if(id==='plate'){ say('La plaque de laiton',["« CINQ CHIFFRES. L'ORDRE EST CELUI DE TA MARCHE. »",
+      "Toi : la marche… l'ordre des pièces. Les fragments gravés, dans l'ordre où je les ai trouvés ! Mon journal !"]); }
+    else if(id==='door'){
+      if(G.ended) return;
+      PZ.keypad.open('La porte monumentale', 5, function(c){ return c===FINAL_CODE; }, function(){
+        finishGame();
+      });
+    }
+  }
+  saveGame();
+}
+function pullBook(color){
+  const F=G.flags; F.books = F.books||[];
+  if(F.books.indexOf(color)>=0){ say('Toi',["Ce livre est déjà sorti de son rayon."]); return; }
+  F.books.push(color); SND.click();
+  const order=['vert','rouge','or','bleu'];
+  const good = order.every(function(c,i){ return F.books[i]===c; });
+  if(!good){ F.books=[]; SND.err();
+    say('Toi',["Un contrepoids grinçe et remet tous les livres en place. Mauvais ordre…"]);
+    return; }
+  if(F.books.length===4){ SND.door(); F.doorOpen2=true; onRoomSolved(2);
+    say('Toi',["Les quatre livres sortis dans l'ordre — un déclic traverse l'étagère entière.",
+      "Un rayonnage pivote lentement : un passage ! Sur son bord, un « 1 » gravé."]);
+  } else {
+    say('Toi',["Le livre sort sans résistance. " + (4-F.books.length) + " autre(s) à trouver…"]);
+  }
+}
+function onRoomSolved(r){ // r = index dans FRAG
+  if(FRAG[r]){ jfrag(FRAG[r], ROOMS[r].nom); }
+  saveGame();
+}
+function goRoom(r){
+  if(G.room===r) return;
+  G.fadeDir=1; G.fadeNext=r;
+}
+function enterRoom(r){
+  G.room=r; G.player.x=140; G.player.y=540; G.player.tx=140; G.player.ty=540; G.player.pending=null;
+  renderJournal();
+  const intro = (G.flags['intro'+r] || r>=9) ? null : ROOMS[r].intro;
+  if(!G.flags['intro'+r]){ G.flags['intro'+r]=true; }
+  if(r===9 && !G.flags.intro9){ G.flags.intro9=true; intro=ROOMS[9].intro; }
+  if(intro) setTimeout(function(){ say('', intro); }, 300);
+  saveGame();
+}
+function finishGame(){
+  SND.win(); G.ended=true; G.scene='end';
+  try { localStorage.removeItem('reveil_save'); } catch(e){}
+}
 
-  function interact(id) {
-    if (!S.awake) return;
-    if (talking) { nextLine(); return; }
-
-    if (id === 'self') {
-      S.lookedSelf++;
-      if (S.lookedSelf === 1) {
-        say('Toi', [
-          'Ma tête... Je ne me souviens de rien. Comment je suis arrivé ici ?',
-          'Cette pièce... il n\'y a qu\'une porte et cette vitre bizarre. Et... j\'ai l\'impression qu\'on m\'observe.'
-        ]);
-      } else if (S.lookedSelf === 2) {
-        say('Toi', ['Mes poches sont vides. Quelqu\'un a fouillé mes affaires...']);
-      } else {
-        say('Toi', ['Il faut que je trouve un moyen de sortir d\'ici.']);
+// ============================== PUZZLES ==============================
+const PZ = {};
+// ---- clavier numérique générique ----
+PZ.keypad = {
+  open:function(title, len, check, onOk){
+    G.puzzle = { type:'keypad', title:title, len:len, buf:'', check:check, onOk:onOk, err:0 };
+  },
+  click:function(p){
+    const pz=G.puzzle;
+    const keys=this.layout();
+    for (const k of keys){
+      if(p.x>k.x && p.x<k.x+k.w && p.y>k.y && p.y<k.y+k.h){
+        if(k.v==='C'){ pz.buf=''; SND.click(); }
+        else if(k.v==='✓'){
+          if(pz.check(pz.buf)){ SND.ok(); const cb=pz.onOk; G.puzzle=null; cb(); }
+          else { pz.buf=''; pz.err=1; SND.err(); setTimeout(function(){ pz.err=0; },600); }
+        }
+        else if(pz.buf.length<pz.len){ pz.buf+=k.v; SND.click(); }
+        return;
       }
     }
-
-    else if (id === 'window') {
-      S.windowSeen++;
-      if (S.windowSeen === 1) {
-        say('???', ['...'], );
-        setTimeout(function () {
-          say('Toi', [
-            'Une silhouette ! Derrière la vitre ! Elle nous regardait !',
-            'Elle s\'est cachée dès que je me suis levé... Qui est-ce ?'
-          ]);
-        }, 600);
-      } else if (S.windowSeen === 2) {
-        say('Toi', ['Rien. Elle s\'est vraiment esquivée. La vitre ne s\'ouvre pas de ce côté...']);
-      } else if (S.windowSeen === 3) {
-        say('???', ['...']);
-        setTimeout(function () {
-          say('Toi', ['Un œil ! Un œil dans l\'ombre qui me fixe ! Reste là... je te retrouverai !']);
-        }, 500);
-      } else {
-        say('Toi', ['L\'œil a disparu. Cette vitre me glace le sang.']);
-      }
+    if(p.y<130) { G.puzzle=null; } // fermer
+  },
+  layout:function(){
+    const cx=512, y0=170, s=64, g=10, out=[];
+    for(let r=0;r<4;r++) for(let c=0;c<3;c++){
+      let v = (r<3) ? String(r*3+c+1) : (c===0?'C':(c===1?'0':'✓'));
+      out.push({x:cx-1.5*s-g+c*(s+g), y:y0+r*(s+g), w:s, h:s, v:v});
     }
-
-    else if (id === 'door') {
-      if (S.doorOpen) { say('Toi', ['La porte est ouverte. La suite m\'attend...']); return; }
-      S.doorTries++;
-      if (S.doorTries === 1) {
-        say('Toi', [
-          'Verrouillée, évidemment. Il y a un petit clavier numérique à côté. 4 chiffres.',
-          'Il me faut un code... fouillons cette pièce, il doit être caché quelque part.'
-        ]);
-      } else {
-        openKeypad();
-      }
-    }
-
-    else if (id === 'chair') {
-      if (!S.noteFound) {
-        S.noteFound = true;
-        addItem(' Scribble ');
-        say('Toi', [
-          'Il y a quelque chose coincé sous le coussin... un bout de papier froissé.',
-          'Des chiffres griffonnés : « 2 0 4 9 ». Ça sent le code de la porte...'
-        ]);
-        toast('Note obtenue : 2 0 4 9');
-      } else {
-        say('Toi', ['Une simple chaise de bois. Le coussin a livré son secret.']);
-      }
-    }
-
-    else if (id === 'floor') {
-      say('Toi', ['Le sol est Poussiéreux... des traces de pas partent de la chaise. Les miennes ? Non... elles sont plus grandes.']);
-    }
-  }
-
-  // ---------- Clavier ----------
-  const kp = $('keypad');
-  function buildKeypad() {
-    let html = '<div class="disp" id="kdisp">____</div><table>';
-    const keys = ['1','2','3','4','5','6','7','8','9','C','0','✓'];
-    for (let r = 0; r < 4; r++) {
-      html += '<tr>';
-      for (let c = 0; c < 3; c++) {
-        const k = keys[r * 3 + c];
-        html += '<td><button data-k="' + k + '">' + k + '</button></td>';
-      }
-      html += '</tr>';
-    }
-    html += '</table><button class="close" id="kclose">fermer (Échap)</button>';
-    kp.innerHTML = html;
-    kp.querySelectorAll('button[data-k]').forEach(function (b) {
-      b.addEventListener('click', function (e) { e.stopPropagation(); pressKey(b.dataset.k); });
+    return out;
+  },
+  draw:function(){
+    const pz=G.puzzle, cx=512;
+    ctx.fillStyle='rgba(0,0,0,0.65)'; ctx.fillRect(0,0,W,H);
+    ctx.fillStyle='#10131c'; ctx.strokeStyle='#3a3f52'; ctx.lineWidth=2;
+    rr(cx-160,60,320,470,10); ctx.fill(); ctx.stroke();
+    ctx.fillStyle='#9fb4d8'; ctx.font='18px Georgia'; ctx.textAlign='center';
+    ctx.fillText(pz.title, cx, 95);
+    ctx.fillStyle = pz.err? '#e06c6c' : '#7fd18a';
+    ctx.font='34px "Courier New",monospace';
+    const disp = (pz.buf + '_'.repeat(pz.len)).slice(0,pz.len);
+    rr(cx-130,112,260,54,6); ctx.strokeStyle='#23283a'; ctx.stroke();
+    ctx.fillText(disp.split('').join(' '), cx, 150);
+    const keys=this.layout();
+    keys.forEach(function(k){
+      ctx.fillStyle = k.v==='✓' ? '#1d3325' : (k.v==='C' ? '#33201d' : '#1c2130');
+      ctx.strokeStyle='#3a3f52'; rr(k.x,k.y,k.w,k.h,8); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = k.v==='✓' ? '#7fd18a' : (k.v==='C' ? '#e08c6c' : '#d8dcea');
+      ctx.font='22px system-ui,sans-serif'; ctx.fillText(k.v, k.x+k.w/2, k.y+k.h/2+8);
     });
-    $('kclose').addEventListener('click', function (e) { e.stopPropagation(); closeKeypad(); });
+    ctx.fillStyle='#5a6172'; ctx.font='13px system-ui,sans-serif';
+    ctx.fillText('clique sur ✕ en haut ou Échap pour fermer', cx, 545);
+    ctx.textAlign='left';
   }
-  let kbuf = '';
-  function openKeypad() { buildKeypad(); kbuf = ''; updDisp(); kp.style.display = 'block'; }
-  function closeKeypad() { kp.style.display = 'none'; }
-  function updDisp(err) {
-    const d = $('kdisp');
-    d.textContent = (kbuf + '____').slice(0, 4);
-    d.classList.toggle('err', !!err);
-  }
-  function pressKey(k) {
-    if (k === 'C') { kbuf = ''; updDisp(); return; }
-    if (k === '✓') {
-      if (kbuf === CODE) {
-        closeKeypad();
-        S.doorOpen = true;
-        say('Toi', [
-          '*BIP* Le verrou saute ! La porte s\'entrouvre sur un couloir sombre...',
-          'Une dernière chose : l\'ombre derrière la vitre. Elle sait quelque chose. Et moi aussi, maintenant : je vais la découvrir.'
-        ]);
-        setTimeout(function () { endDemo(); }, 1200);
-      } else {
-        kbuf = ''; updDisp(true);
-        toast('Code incorrect');
-        setTimeout(function () { updDisp(); }, 700);
+};
+// ---- cadran à symboles (couloir) ----
+PZ.sym = {
+  SYMS:['lune','étoile','soleil','arbre','feu','œil'],
+  open:function(check){ G.puzzle={type:'sym', sel:[null,null,null], check:check, active:0}; },
+  click:function(p){
+    const pz=G.puzzle;
+    if(p.y<130 || p.y>540){ G.puzzle=null; return; }
+    const cx=512;
+    // slots
+    for(let i=0;i<3;i++){
+      const sx=cx-190+i*150;
+      if(p.x>=sx&&p.x<=sx+110&&p.y>=200&&p.y<=310){
+        pz.active=i; pz.choicesOpen=true; SND.click(); return;
       }
-      return;
     }
-    if (kbuf.length < 4) { kbuf += k; updDisp(); }
-  }
-  document.addEventListener('keydown', function (e) {
-    if (kp.style.display === 'block') {
-      if (e.key === 'Escape') closeKeypad();
-      if (/^[0-9]$/.test(e.key)) pressKey(e.key);
-      if (e.key === 'Enter') pressKey('✓');
-      if (e.key === 'Backspace') pressKey('C');
-    } else if (talking && (e.key === ' ' || e.key === 'Enter')) {
-      nextLine();
+    // panneau de choix
+    if(pz.choicesOpen){
+      const gx=cx-255, gy=340, s=170;
+      for(let i=0;i<6;i++){
+        const x=gx+(i%3)*(s/2+10), y=gy+Math.floor(i/3)*100;
+        if(p.x>=x&&p.x<=x+s/2&&p.y>=y&&p.y<=y+90){
+          pz.sel[pz.active]=this.SYMS[i]; pz.choicesOpen=false; SND.click();
+          if(pz.sel.every(function(s){return s;}) && pz.check(pz.sel)) { G.puzzle=null; }
+          return;
+        }
+      }
     }
-  });
-
-  function endDemo() {
-    S.ended = true;
-    say('', ['— FIN DE LA DÉMO —', 'La suite de l\'aventure arrive bientôt... Drasah y travaille. 😉']);
-  }
-
-  // ---------- Souris ----------
-  function stagePos(e) {
-    const r = cv.getBoundingClientRect();
-    return { x: (e.clientX - r.left) * (W / r.width), y: (e.clientY - r.top) * (H / r.height) };
-  }
-  function hitAt(p) {
-    // ordre inverse : éléments "devant" d'abord
-    for (let i = hotspots.length - 1; i >= 0; i--) {
-      const h = hotspots[i];
-      if (p.x >= h.x && p.x <= h.x + h.w && p.y >= h.y && p.y <= h.y + h.h) return h;
+  },
+  drawGlyph:function(name,x,y,s){
+    ctx.strokeStyle='#d8b46a'; ctx.fillStyle='#d8b46a'; ctx.lineWidth=3;
+    if(name==='lune'){ ctx.beginPath(); ctx.arc(x,y,s*0.4,0.5,Math.PI*1.8); ctx.stroke(); }
+    else if(name==='étoile'){ ctx.beginPath(); for(let i=0;i<5;i++){ const a=-Math.PI/2+i*2*Math.PI/5; const a2=a+Math.PI/5;
+      ctx.lineTo(x+Math.cos(a)*s*0.42,y+Math.sin(a)*s*0.42); ctx.lineTo(x+Math.cos(a2)*s*0.18,y+Math.sin(a2)*s*0.18);} ctx.closePath(); ctx.fill(); }
+    else if(name==='soleil'){ ctx.beginPath(); ctx.arc(x,y,s*0.26,0,Math.PI*2); ctx.fill();
+      for(let i=0;i<8;i++){ const a=i*Math.PI/4; ctx.beginPath(); ctx.moveTo(x+Math.cos(a)*s*0.34,y+Math.sin(a)*s*0.34);
+        ctx.lineTo(x+Math.cos(a)*s*0.46,y+Math.sin(a)*s*0.46); ctx.stroke(); } }
+    else if(name==='arbre'){ ctx.beginPath(); ctx.moveTo(x,y+s*0.4); ctx.lineTo(x,y);
+      ctx.moveTo(x-s*0.2,y+s*0.05); ctx.lineTo(x,y-s*0.3); ctx.lineTo(x+s*0.2,y+s*0.05); ctx.stroke(); }
+    else if(name==='feu'){ ctx.beginPath(); ctx.moveTo(x,y-s*0.35);
+      ctx.quadraticCurveTo(x-s*0.3,y+ s*0.1,x,y+s*0.35); ctx.quadraticCurveTo(x+s*0.3,y+s*0.1,x,y-s*0.35); ctx.stroke(); }
+    else if(name==='œil'){ ctx.beginPath(); ctx.moveTo(x-s*0.4,y); ctx.quadraticCurveTo(x,y-s*0.35,x+s*0.4,y);
+      ctx.quadraticCurveTo(x,y+s*0.35,x-s*0.4,y); ctx.stroke(); ctx.beginPath(); ctx.arc(x,y,s*0.1,0,Math.PI*2); ctx.fill(); }
+  },
+  draw:function(){
+    const pz=G.puzzle, cx=512;
+    ctx.fillStyle='rgba(0,0,0,0.65)'; ctx.fillRect(0,0,W,H);
+    ctx.fillStyle='#10131c'; ctx.strokeStyle='#3a3f52'; ctx.lineWidth=2;
+    rr(cx-300,60,600,500,10); ctx.fill(); ctx.stroke();
+    ctx.fillStyle='#9fb4d8'; ctx.font='19px Georgia'; ctx.textAlign='center';
+    ctx.fillText('Le cadran de la porte — « la nuit précède l\u2019aube »', cx, 95);
+    for(let i=0;i<3;i++){
+      const sx=cx-190+i*150;
+      ctx.fillStyle = pz.active===i ? '#2a3145' : '#161a26';
+      ctx.strokeStyle = pz.sel[i]? '#d8b46a':'#3a3f52';
+      rr(sx,200,110,110,8); ctx.fill(); ctx.stroke();
+      if(pz.sel[i]) this.drawGlyph(pz.sel[i], sx+55, 255, 90);
     }
-    return null;
-  }
-  cv.addEventListener('mousemove', function (e) {
-    if (!S.awake) return;
-    cv.style.cursor = hitAt(stagePos(e)) ? 'pointer' : 'default';
-  });
-  cv.addEventListener('click', function (e) {
-    if (!S.awake) return;
-    if (kp.style.display === 'block') return;
-    if (talking) { nextLine(); return; }
-    const h = hitAt(stagePos(e));
-    if (h) interact(h.id);
-  });
-  $('dialogue').addEventListener('click', function () { if (talking) nextLine(); });
-
-  // ---------- Intro ----------
-  $('intro').addEventListener('click', function () {
-    if (S.awake) return;
-    const el = $('intro');
-    el.style.opacity = '0';
-    setTimeout(function () { el.style.display = 'none'; }, 1200);
-    S.awake = true;
-    S.wakeAnim = 0.001; // démarre l'animation
-    setTimeout(function () {
-      say('Toi', [
-        'Aïe... ma nuque. Où suis-je ? Cette chaise... ce plafond...',
-        'Une pièce fermée. Une porte, une vitre. Et... ce sentiment d\'être attendu.',
-        'Fouille la pièce : clique sur ce qui t\'intrigue.'
-      ]);
-    }, 1400);
-  });
-
-  // ---------- Rendu ----------
-  function roundRect(x, y, w, h, r) {
-    ctx.beginPath();
-    ctx.moveTo(x + r, y);
-    ctx.arcTo(x + w, y, x + w, y + h, r);
-    ctx.arcTo(x + w, y + h, x, y + h, r);
-    ctx.arcTo(x, y + h, x, y, r);
-    ctx.arcTo(x, y, x + w, y, r);
-    ctx.closePath();
-  }
-
-  function drawRoom() {
-    // fond mur
-    const g = ctx.createLinearGradient(0, 0, 0, H);
-    g.addColorStop(0, '#171a22');
-    g.addColorStop(0.7, '#232733');
-    g.addColorStop(1, '#1a1d26');
-    ctx.fillStyle = g;
-    ctx.fillRect(0, 0, W, H);
-
-    // papier peint défraîchi (lignes)
-    ctx.strokeStyle = 'rgba(255,255,255,0.03)';
-    ctx.lineWidth = 1;
-    for (let x = 40; x < W; x += 60) {
-      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x - 30, 460); ctx.stroke();
-    }
-
-    // sol
-    ctx.fillStyle = '#2e2a24';
-    ctx.beginPath();
-    ctx.moveTo(0, 460); ctx.lineTo(W, 460); ctx.lineTo(W, H); ctx.lineTo(0, H);
-    ctx.closePath(); ctx.fill();
-    // lattes
-    ctx.strokeStyle = 'rgba(0,0,0,0.35)';
-    for (let i = 0; i < 12; i++) {
-      ctx.beginPath(); ctx.moveTo(i * 90 - 40, H); ctx.lineTo(i * 110 + 60, 460); ctx.stroke();
-    }
-    // tapis sous la chaise
-    ctx.fillStyle = 'rgba(90,60,50,0.35)';
-    ctx.beginPath(); ctx.ellipse(405, 545, 190, 42, 0, 0, Math.PI * 2); ctx.fill();
-
-    // plafonnateur : lampe suspendue
-    ctx.strokeStyle = '#0d0f14'; ctx.lineWidth = 3;
-    ctx.beginPath(); ctx.moveTo(W / 2, 0); ctx.lineTo(W / 2, 70); ctx.stroke();
-    const sway = Math.sin(S.time / 60) * 4;
-    // cône de lumière
-    const lg = ctx.createRadialGradient(W / 2 + sway, 100, 10, W / 2, 300, 480);
-    lg.addColorStop(0, 'rgba(255,228,160,0.30)');
-    lg.addColorStop(0.4, 'rgba(255,228,160,0.08)');
-    lg.addColorStop(1, 'rgba(255,228,160,0)');
-    ctx.fillStyle = lg;
-    ctx.beginPath();
-    ctx.moveTo(W / 2 + sway - 14, 96);
-    ctx.lineTo(W / 2 + sway + 14, 96);
-    ctx.lineTo(W / 2 + 320, 470);
-    ctx.lineTo(W / 2 - 320, 470);
-    ctx.closePath(); ctx.fill();
-    // ampoule
-    ctx.fillStyle = '#ffe8a0';
-    ctx.beginPath(); ctx.arc(W / 2 + sway, 92, 11, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#c9a44c';
-    ctx.fillRect(W / 2 + sway - 8, 82, 16, 6);
-  }
-
-  function drawWindow() {
-    const x = 60, y = 130, w = 170, h = 200;
-    // vitre : reflet sombre
-    ctx.fillStyle = '#0a0d14';
-    roundRect(x, y, w, h, 6); ctx.fill();
-    ctx.strokeStyle = '#3d4356'; ctx.lineWidth = 7;
-    roundRect(x, y, w, h, 6); ctx.stroke();
-    // croisillon
-    ctx.lineWidth = 5;
-    ctx.beginPath();
-    ctx.moveTo(x + w / 2, y + 4); ctx.lineTo(x + w / 2, y + h - 4);
-    ctx.moveTo(x + 4, y + h / 2); ctx.lineTo(x + w - 4, y + h / 2);
-    ctx.stroke();
-    // reflets
-    ctx.strokeStyle = 'rgba(160,180,220,0.10)'; ctx.lineWidth = 8;
-    ctx.beginPath(); ctx.moveTo(x + 18, y + h - 20); ctx.lineTo(x + w - 40, y + 18); ctx.stroke();
-
-    // ce qu'on voit derrière
-    if (S.windowSeen === 1) {
-      // silhouette qui se cache (demi-visible, penchée)
-      ctx.fillStyle = 'rgba(5,6,9,0.95)';
-      ctx.beginPath();
-      ctx.ellipse(x + w / 2 + 30, y + h - 30, 42, 60, 0.2, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.beginPath(); ctx.arc(x + w / 2 + 44, y + h - 78, 22, 0, Math.PI * 2); ctx.fill();
-    } else if (S.windowSeen === 2) {
-      // rien : vide
-    } else if (S.windowSeen >= 3) {
-      // l'œil dans l'ombre
-      const eyeOpen = 0.5 + 0.5 * Math.sin(S.time / 18);
-      ctx.fillStyle = 'rgba(4,5,8,0.98)';
-      ctx.beginPath(); ctx.ellipse(x + w / 2, y + h / 2 + 20, 70, 78, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#dfe6f2';
-      ctx.beginPath();
-      ctx.ellipse(x + w / 2, y + h / 2 + 10, 18, 9 * (0.6 + 0.4 * eyeOpen), 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = '#1c2740';
-      ctx.beginPath(); ctx.arc(x + w / 2, y + h / 2 + 10, 6, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#0a0d14';
-      ctx.beginPath(); ctx.arc(x + w / 2, y + h / 2 + 10, 2.5, 0, Math.PI * 2); ctx.fill();
+    if(pz.choicesOpen){
+      const gx=cx-255, gy=340, s=170;
+      for(let i=0;i<6;i++){
+        const x=gx+(i%3)*(s/2+10), y=gy+Math.floor(i/3)*100;
+        ctx.fillStyle='#1c2130'; ctx.strokeStyle='#3a3f52';
+        rr(x,y,s/2,90,8); ctx.fill(); ctx.stroke();
+        this.drawGlyph(this.SYMS[i], x+s/4, y+45, 70);
+      }
+      ctx.fillStyle='#5a6172'; ctx.font='13px system-ui,sans-serif';
+      ctx.fillText('choisis un symbole', cx, 540);
     } else {
-      // avant de l'avoir vue : une présence à peine suggérée
-      ctx.fillStyle = 'rgba(6,8,12,0.7)';
-      ctx.beginPath(); ctx.ellipse(x + w / 2 - 26, y + h / 2 + 10, 34, 52, 0.08, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle='#5a6172'; ctx.font='13px system-ui,sans-serif';
+      ctx.fillText('clique une case, puis un symbole · Échap ou ✕ pour fermer', cx, 540);
     }
+    ctx.textAlign='left';
   }
-
-  function drawDoor() {
-    const x = 700, y = 110, w = 170, h = 350;
-    if (S.doorOpen) {
-      // porte entrouverte sur le noir
-      ctx.fillStyle = '#020204';
-      ctx.fillRect(x, y, w, h);
-      ctx.strokeStyle = '#3d4356'; ctx.lineWidth = 6;
-      ctx.strokeRect(x, y, w, h);
-      // liseré de lumière du couloir
-      const clg = ctx.createLinearGradient(x - 40, 0, x + 10, 0);
-      clg.addColorStop(0, 'rgba(255,220,150,0)');
-      clg.addColorStop(1, 'rgba(255,220,150,0.18)');
-      ctx.fillStyle = clg;
-      ctx.fillRect(x - 40, y, 50, h);
-      // vantail ouvert
-      ctx.fillStyle = '#33303f';
-      ctx.save();
-      ctx.translate(x, y);
-      ctx.transform(0.35, 0, 0.12, 1, 0, 0);
-      ctx.fillRect(0, 0, w, h);
-      ctx.restore();
-      return;
+};
+// ---- piano / mélodie ----
+PZ.piano = {
+  NOTES:[{n:'DO',f:262},{n:'RÉ',f:294},{n:'MI',f:330},{n:'FA',f:349},{n:'SOL',f:392},{n:'LA',f:440},{n:'SI',f:494},{n:'DO',f:523}],
+  MELODY:[4,2,0,2,4,4],
+  seq:[], open:false, demoTimer:null,
+  openP(){ this.seq=[]; G.puzzle={type:'piano'}; },
+  open:function(onWin){ this.seq=[]; this.onWin=onWin; G.puzzle={type:'piano'}; },
+  demo(){
+    const self=this; let i=0;
+    say('', ['*La boîte à musique tinte : SOL… MI… DO… MI… SOL… SOL…*']);
+    G.melodyDemo = true;
+    clearInterval(self.demoTimer);
+    self.demoTimer = setInterval(function(){
+      if(i>=self.MELODY.length){ clearInterval(self.demoTimer); G.melodyDemo=false; return; }
+      const k=self.MELODY[i]; SND.note(self.NOTES[k].f); self.flash=k; i++;
+      setTimeout(function(){ self.flash=-1; }, 300);
+    }, 500);
+  },
+  keyAt:function(p){
+    if(p.y<380||p.y>560) return -1;
+    if(p.x<200||p.x>824) return -1;
+    return clamp(Math.floor((p.x-200)/78),0,7);
+  },
+  click:function(p){
+    const k=this.keyAt(p); if(k<0){ if(p.y<120) G.puzzle=null; return; }
+    SND.note(this.NOTES[k].f); this.flash=k; const self=this;
+    setTimeout(function(){ self.flash=-1; },200);
+    this.seq.push(k);
+    if(this.seq.length>this.MELODY.length){ this.seq=[]; return; }
+    for(let i=0;i<this.seq.length;i++){
+      if(this.seq[i]!==this.MELODY[i]){ this.seq=[]; SND.err(); toast('Mélodie fausse — réessaie !'); return; }
     }
-    // cadre
-    ctx.strokeStyle = '#3d4356'; ctx.lineWidth = 8;
-    ctx.strokeRect(x, y, w, h);
-    // porte
-    const dg = ctx.createLinearGradient(x, 0, x + w, 0);
-    dg.addColorStop(0, '#2a2e3d');
-    dg.addColorStop(0.5, '#383d4f');
-    dg.addColorStop(1, '#252936');
-    ctx.fillStyle = dg;
-    ctx.fillRect(x + 4, y + 4, w - 8, h - 8);
-    // panneaux
-    ctx.strokeStyle = 'rgba(0,0,0,0.45)'; ctx.lineWidth = 3;
-    roundRect(x + 26, y + 30, w - 52, 120, 4); ctx.stroke();
-    roundRect(x + 26, y + 180, w - 52, 130, 4); ctx.stroke();
-    // poignée
-    ctx.fillStyle = '#8a8f9e';
-    ctx.beginPath(); ctx.arc(x + w - 30, y + h / 2, 7, 0, Math.PI * 2); ctx.fill();
-    // clavier numérique
-    ctx.fillStyle = '#141822';
-    roundRect(x - 46, y + 120, 36, 60, 4); ctx.fill();
-    ctx.strokeStyle = '#454c62'; ctx.lineWidth = 2;
-    roundRect(x - 46, y + 120, 36, 60, 4); ctx.stroke();
-    ctx.fillStyle = '#7fd18a';
-    ctx.fillRect(x - 40, y + 126, 24, 10);
-    ctx.fillStyle = '#3a4154';
-    for (let r = 0; r < 3; r++) for (let c = 0; c < 3; c++) {
-      ctx.fillRect(x - 41 + c * 10, y + 142 + r * 12, 7, 8);
+    if(this.seq.length===this.MELODY.length){
+      G.puzzle=null; this.onWin&&this.onWin();
     }
+  },
+  flash:-1,
+  draw:function(){
+    ctx.fillStyle='rgba(0,0,0,0.65)'; ctx.fillRect(0,0,W,H);
+    ctx.fillStyle='#141018'; ctx.strokeStyle='#3a3f52'; ctx.lineWidth=2;
+    rr(160,100,704,480,12); ctx.fill(); ctx.stroke();
+    ctx.fillStyle='#9fb4d8'; ctx.font='19px Georgia'; ctx.textAlign='center';
+    ctx.fillText(G.melodyDemo? 'Écoute la boîte à musique…' : 'Rejoue la mélodie de la boîte à musique', 512, 140);
+    for(let i=0;i<8;i++){
+      const x=200+i*78;
+      ctx.fillStyle = this.flash===i ? '#f2ead0' : '#e8e2d0';
+      rr(x,380,70,180,4); ctx.fill(); ctx.strokeStyle='#1a1a1a'; ctx.stroke();
+      ctx.fillStyle='#5a5346'; ctx.font='14px Georgia'; ctx.fillText(this.NOTES[i].n, x+35, 545);
+    }
+    for(let i=0;i<7;i++){
+      const x=200+i*78+54;
+      ctx.fillStyle='#14100e'; ctx.fillRect(x,380,24,110);
+      ctx.strokeStyle='#000'; ctx.strokeRect(x,380,24,110);
+    }
+    ctx.fillStyle='#5a6172'; ctx.font='13px system-ui,sans-serif';
+    ctx.fillText('joue les touches dans le bon ordre · Échap pour fermer', 512, 560);
+    ctx.textAlign='left';
   }
-
-  function drawChair() {
-    const cx = 405, cy = 545;
-    // chaise de bois : pieds
-    ctx.strokeStyle = '#4a3826'; ctx.lineWidth = 9;
+};
+// ---- tuyaux ----
+PZ.pipes = {
+  // chemin solution : (0,0)→(0,1)→(1,1)→(1,2)→(2,2)→(2,3)→(3,3)
+  path:[[0,0],[0,1],[1,1],[1,2],[2,2],[2,3],[3,3]],
+  init:false, cells:null, rot:null,
+  open:function(onWin){
+    const P=this.path;
+    this.cells=[]; this.rot=[];
+    for(let i=0;i<P.length;i++){
+      const dirs=[];
+      if(i>0){ const a=P[i-1],b=P[i]; if(a[0]===b[0]) dirs.push(a[1]<b[1]?'S':'N'); else dirs.push(a[0]<b[0]?'E':'W'); }
+      if(i<P.length-1){ const a=P[i],b=P[i+1]; if(a[0]===b[0]) dirs.push(a[1]<b[1]?'S':'N'); else dirs.push(a[0]<b[0]?'E':'W'); }
+      this.cells.push({r:P[i][0],c:P[i][1],dirs:dirs});
+      this.rot.push(Math.floor(Math.random()*4));
+    }
+    G.puzzle={type:'pipes'}; this.onWin=onWin;
+  },
+  dirVec:function(d){ return d==='N'?[0,-1]:d==='S'?[0,1]:d==='E'?[1,0]:[-1,0]; },
+  actualDirs:function(i){
+    const d=this.cells[i].dirs.slice();
+    for(let k=0;k<this.rot[i];k++){ d[0]={N:'E',E:'S',S:'W',W:'N'}[d[0]]; if(d[1]) d[1]={N:'E',E:'S',S:'W',W:'N'}[d[1]]; }
+    return d;
+  },
+  cellRect:function(r,c){ return {x:300+c*110, y:180+r*110, w:100, h:100}; },
+  solved:function(){
+    const self=this;
+    return this.cells.every(function(cell,i){
+      const need = cell.dirs.slice().sort().join('');
+      const act = self.actualDirs(i).sort().join('');
+      return need===act;
+    });
+  },
+  click:function(p){
+    for(let i=0;i<this.cells.length;i++){
+      const r=this.cells[i], rc=this.cellRect(r.r,r.c);
+      if(p.x>=rc.x&&p.x<=rc.x+rc.w&&p.y>=rc.y&&p.y<=rc.y+rc.h){
+        this.rot[i]=(this.rot[i]+1)%4; SND.click();
+        if(this.solved()){ G.puzzle=null; this.onWin&&this.onWin(); }
+        return;
+      }
+    }
+    if(p.y<150) G.puzzle=null;
+  },
+  draw:function(){
+    ctx.fillStyle='rgba(0,0,0,0.7)'; ctx.fillRect(0,0,W,H);
+    ctx.fillStyle='#0e1416'; ctx.strokeStyle='#3a3f52'; ctx.lineWidth=2;
+    rr(240,120,640,500,10); ctx.fill(); ctx.stroke();
+    ctx.fillStyle='#9fb4d8'; ctx.font='19px Georgia'; ctx.textAlign='center';
+    ctx.fillText('Le réseau de tuyaux — relie la vanne (rouge) à l\u2019évier (bleu)', 512, 155);
+    for(let r=0;r<4;r++) for(let c=0;c<4;c++){
+      const rc=this.cellRect(r,c);
+      ctx.fillStyle='#101a1c'; ctx.strokeStyle='#22323a';
+      rr(rc.x,rc.y,rc.w,rc.h,4); ctx.fill(); ctx.stroke();
+    }
+    // vanne et évier
+    const v=this.cellRect(0,0), s=this.cellRect(3,3);
+    ctx.fillStyle='#b04f4f'; ctx.beginPath(); ctx.arc(v.x+50,v.y+50,26,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle='#4f7fb0'; rr(s.x+15,s.y+30,70,45,8); ctx.fill();
+    const solved=this.solved();
+    for(let i=0;i<this.cells.length;i++){
+      const cell=this.cells[i], rc=this.cellRect(cell.r,cell.c);
+      const dirs=this.actualDirs(i);
+      ctx.strokeStyle = solved? '#5fb0a0' : '#8a8f9e';
+      ctx.lineWidth=16; ctx.lineCap='round';
+      const cx=rc.x+50, cy=rc.y+50;
+      ctx.beginPath();
+      for(const d of dirs){ const vec=this.dirVec(d); ctx.moveTo(cx,cy); ctx.lineTo(cx+vec[0]*38, cy+vec[1]*38); }
+      ctx.stroke();
+      ctx.fillStyle='#2a3138'; ctx.beginPath(); ctx.arc(cx,cy,10,0,Math.PI*2); ctx.fill();
+    }
+    ctx.fillStyle='#5a6172'; ctx.font='13px system-ui,sans-serif';
+    ctx.fillText('clique un tuyau pour le faire pivoter · Échap pour fermer', 512, 600);
+    ctx.textAlign='left';
+  }
+};
+// ---- miroirs ----
+PZ.mirrors = {
+  // miroirs: [col,row] ; orientation: 0 = '/', 1 = '\'
+  m:[ {c:2,r:2,o:0}, {c:2,r:4,o:1}, {c:5,r:4,o:0} ],
+  sun:{c:0,r:2}, flower:{c:5,r:0},
+  open:function(onWin){ G.puzzle={type:'mirrors'}; this.onWin=onWin; },
+  cellRect:function(c,r){ return {x:160+c*90, y:150+r*80, w:80, h:70}; },
+  trace:function(){
+    let dir=[1,0], c=this.sun.c, r=this.sun.r;
+    const segs=[[c,r]]; const seen={};
+    for(let step=0;step<60;step++){
+      c+=dir[0]; r+=dir[1];
+      if(c<0||c>7||r<0||r>4) return {segs:segs, hit:false};
+      segs.push([c,r]);
+      const m=this.m.find(function(mm){ return mm.c===c&&mm.r===r; });
+      if(m){
+        const key=c+','+r; if(seen[key]) return {segs:segs,hit:false};
+        seen[key]=1;
+        if(m.o===0){ dir = dir[0]===1?[0,-1]:dir[0]===-1?[0,1]:dir[1]===1?[1,0]:[-1,0]; }
+        else { dir = dir[0]===1?[0,1]:dir[0]===-1?[0,-1]:dir[1]===1?[-1,0]:[1,0]; }
+      }
+      if(c===this.flower.c&&r===this.flower.r) return {segs:segs,hit:true};
+    }
+    return {segs:segs,hit:false};
+  },
+  click:function(p){
+    for(const mm of this.m){
+      const rc=this.cellRect(mm.c,mm.r);
+      if(p.x>=rc.x&&p.x<=rc.x+rc.w&&p.y>=rc.y&&p.y<=rc.y+rc.h){
+        mm.o=(mm.o+1)%2; SND.click();
+        if(this.trace().hit){ G.puzzle=null; this.onWin&&this.onWin(); }
+        return;
+      }
+    }
+    if(p.y<130) G.puzzle=null;
+  },
+  draw:function(){
+    ctx.fillStyle='rgba(0,0,0,0.65)'; ctx.fillRect(0,0,W,H);
+    ctx.fillStyle='#0e1610'; ctx.strokeStyle='#3a3f52'; ctx.lineWidth=2;
+    rr(110,100,780,480,10); ctx.fill(); ctx.stroke();
+    ctx.fillStyle='#9fb4d8'; ctx.font='19px Georgia'; ctx.textAlign='center';
+    ctx.fillText('Le jeu de miroirs — guide le rayon jusqu\u2019à la fleur noire', 512, 135);
+    for(let r=0;r<5;r++) for(let c=0;c<8;c++){
+      const rc=this.cellRect(c,r);
+      ctx.fillStyle='#0f1a12'; ctx.strokeStyle='#1e2e22';
+      rr(rc.x,rc.y,rc.w,rc.h,3); ctx.fill(); ctx.stroke();
+    }
+    // soleil et fleur
+    const su=this.cellRect(this.sun.c,this.sun.r), fl=this.cellRect(this.flower.c,this.flower.r);
+    ctx.fillStyle='#ffd479'; ctx.beginPath(); ctx.arc(su.x+40,su.y+35,20,0,Math.PI*2); ctx.fill();
+    const hit=this.trace().hit;
+    ctx.fillStyle= hit? '#c05fd8' : '#4a2a4a';
+    ctx.beginPath(); ctx.arc(fl.x+40,fl.y+35,16,0,Math.PI*2); ctx.fill();
+    for(let i=0;i<6;i++){ const a=i*Math.PI/3; ctx.beginPath();
+      ctx.ellipse(fl.x+40+Math.cos(a)*22, fl.y+35+Math.sin(a)*22, 8,5, a, 0, Math.PI*2); ctx.fill(); }
+    // rayon
+    const t=this.trace();
+    ctx.strokeStyle='rgba(255,228,150,0.8)'; ctx.lineWidth=4; ctx.lineCap='round';
     ctx.beginPath();
-    ctx.moveTo(cx - 60, cy); ctx.lineTo(cx - 78, cy - 170);
-    ctx.moveTo(cx + 60, cy); ctx.lineTo(cx + 78, cy - 170);
-    ctx.moveTo(cx - 48, cy - 110); ctx.lineTo(cx + 48, cy - 110);
+    t.segs.forEach(function(s,i){ const rc=PZ.mirrors.cellRect(s[0],s[1]);
+      const x=rc.x+40,y=rc.y+35; if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y); });
     ctx.stroke();
-    // assise
-    ctx.fillStyle = '#5c452e';
-    roundRect(cx - 66, cy - 178, 132, 26, 6); ctx.fill();
-    // coussin (avec bosse si note pas trouvée ? non, invisible)
-    ctx.fillStyle = '#7a4a42';
-    roundRect(cx - 56, cy - 188, 112, 22, 8); ctx.fill();
-    // dossier
-    ctx.strokeStyle = '#4a3826'; ctx.lineWidth = 10;
-    ctx.beginPath();
-    ctx.moveTo(cx - 62, cy - 176); ctx.lineTo(cx - 54, cy - 320);
-    ctx.moveTo(cx + 62, cy - 176); ctx.lineTo(cx + 54, cy - 320);
-    ctx.stroke();
-    ctx.fillStyle = '#5c452e';
-    roundRect(cx - 56, cy - 322, 112, 40, 6); ctx.fill();
-    // taches d'ombre
-    ctx.fillStyle = 'rgba(0,0,0,0.25)';
-    roundRect(cx - 66, cy - 158, 132, 8, 3); ctx.fill();
+    // miroirs
+    for(const mm of this.m){
+      const rc=this.cellRect(mm.c,mm.r);
+      ctx.strokeStyle='#c8d4e8'; ctx.lineWidth=5;
+      ctx.beginPath();
+      if(mm.o===0){ ctx.moveTo(rc.x+15,rc.y+58); ctx.lineTo(rc.x+65,rc.y+12); }
+      else { ctx.moveTo(rc.x+15,rc.y+12); ctx.lineTo(rc.x+65,rc.y+58); }
+      ctx.stroke();
+      ctx.fillStyle='#5a6172'; ctx.font='11px system-ui,sans-serif';
+      ctx.fillText('miroir', rc.x+40, rc.y+70);
+    }
+    ctx.fillStyle='#5a6172'; ctx.font='13px system-ui,sans-serif';
+    ctx.fillText('clique un miroir pour l\u2019incliner · Échap pour fermer', 512, 565);
+    ctx.textAlign='left';
   }
+};
+// ---- fils / symboles ----
+PZ.wires = {
+  pairs:[{s:'lune'},{s:'étoile'},{s:'soleil'},{s:'œil'}],
+  shuffled:null, links:{}, sel:null, err:null,
+  open:function(onWin){
+    this.shuffled=[1,3,0,2]; this.links={}; this.sel=null; this.err=null;
+    G.puzzle={type:'wires'}; this.onWin=onWin;
+  },
+  layoutL:function(i){ return {x:270,y:190+i*90,w:90,h:70}; },
+  layoutR:function(i){ return {x:660,y:190+i*90,w:90,h:70}; },
+  glyph:function(name,x,y,s){ PZ.sym.drawGlyph(name,x,y,s); },
+  click:function(p){
+    for(let i=0;i<4;i++){
+      const L=this.layoutL(i);
+      if(p.x>=L.x&&p.x<=L.x+L.w&&p.y>=L.y&&p.y<=L.y+L.h){ this.sel=i; SND.click(); return; }
+      const R=this.layoutR(i);
+      if(p.x>=R.x&&p.x<=R.x+R.w&&p.y>=R.y&&p.y<=R.y+R.h){
+        if(this.sel===null){ return; }
+        if(this.shuffled[i]===this.sel){ this.links[this.sel]=i; SND.ok();
+          if(Object.keys(this.links).length===4){ G.puzzle=null; this.onWin&&this.onWin(); }
+        } else { SND.err(); const e=this.sel; this.err=e; const self=this; setTimeout(function(){ self.err=null; },400); }
+        this.sel=null; return;
+      }
+    }
+    if(p.y<150) G.puzzle=null;
+  },
+  draw:function(){
+    ctx.fillStyle='rgba(0,0,0,0.65)'; ctx.fillRect(0,0,W,H);
+    ctx.fillStyle='#12101a'; ctx.strokeStyle='#3a3f52'; ctx.lineWidth=2;
+    rr(200,80,624,480,10); ctx.fill(); ctx.stroke();
+    ctx.fillStyle='#9fb4d8'; ctx.font='19px Georgia'; ctx.textAlign='center';
+    ctx.fillText('Le panneau électrique — relie chaque symbole à son jumeau', 512, 120);
+    for(let i=0;i<4;i++){
+      const L=this.layoutL(i);
+      ctx.fillStyle = this.sel===i? '#2a3145' : (this.links[i]!==undefined? '#1d3325' : '#1c2130');
+      ctx.strokeStyle = this.links[i]!==undefined? '#7fd18a' : (this.sel===i? '#d8b46a':'#3a3f52');
+      rr(L.x,L.y,L.w,L.h,8); ctx.fill(); ctx.stroke();
+      this.glyph(this.pairs[i].s, L.x+45, L.y+35, 55);
+      const R=this.layoutR(i);
+      ctx.fillStyle = this.links[this.shuffled[i]]===i? '#1d3325' : '#1c2130';
+      ctx.strokeStyle = this.links[this.shuffled[i]]===i? '#7fd18a':'#3a3f52';
+      rr(R.x,R.y,R.w,R.h,8); ctx.fill(); ctx.stroke();
+      this.glyph(this.pairs[this.shuffled[i]].s, R.x+45, R.y+35, 55);
+      if(this.links[this.shuffled[i]]===i){
+        ctx.strokeStyle='#7fd18a'; ctx.lineWidth=4;
+        ctx.beginPath(); ctx.moveTo(L.x+L.w,L.y+L.h/2);
+        ctx.bezierCurveTo(L.x+L.w+80,L.y+L.h/2, R.x-80, R.y+R.h/2, R.x, R.y+R.h/2);
+        ctx.stroke();
+      }
+    }
+    if(this.err!==null && this.err!==undefined){
+      const L=this.layoutL(this.err);
+      ctx.strokeStyle='#e06c6c'; ctx.lineWidth=3; ctx.setLineDash([6,6]);
+      ctx.beginPath(); ctx.moveTo(L.x+L.w,L.y+L.h/2);
+      ctx.bezierCurveTo(L.x+L.w+80,L.y+L.h/2, 600, 520, 660, 520); ctx.stroke();
+      ctx.setLineDash([]);
+    }
+    ctx.fillStyle='#5a6172'; ctx.font='13px system-ui,sans-serif';
+    ctx.fillText('clique un symbole à gauche, puis son jumeau à droite · Échap pour fermer', 512, 540);
+    ctx.textAlign='left';
+  }
+};
+// ---- tour de Hanoï ----
+PZ.hanoi = {
+  pegs:null, sel:null,
+  open:function(onWin){
+    this.pegs=[[4,3,2,1],[],[]]; this.sel=null; this.moves=0;
+    G.puzzle={type:'hanoi'}; this.onWin=onWin;
+  },
+  pegX:function(i){ return 330+i*180; },
+  click:function(p){
+    if(p.y<130){ G.puzzle=null; return; }
+    for(let i=0;i<3;i++){
+      const x=this.pegX(i);
+      if(p.x>=x-85 && p.x<=x+85 && p.y>150 && p.y<560){
+        if(this.sel===null){
+          if(this.pegs[i].length){ this.sel=i; SND.click(); }
+        } else if(this.sel===i){ this.sel=null; }
+        else {
+          const from=this.pegs[this.sel], to=this.pegs[i];
+          const d=from[from.length-1];
+          if(!to.length || to[to.length-1]>d){ from.pop(); to.push(d); this.moves++; SND.click();
+            if(this.pegs[2].length===4){ G.puzzle=null; this.onWin&&this.onWin(); }
+          } else { SND.err(); toast('Un grand disque ne repose jamais sur un plus petit.'); }
+          this.sel=null;
+        }
+        return;
+      }
+    }
+  },
+  draw:function(){
+    ctx.fillStyle='rgba(0,0,0,0.7)'; ctx.fillRect(0,0,W,H);
+    ctx.fillStyle='#0e0d10'; ctx.strokeStyle='#3a3f52'; ctx.lineWidth=2;
+    rr(180,90,664,490,10); ctx.fill(); ctx.stroke();
+    ctx.fillStyle='#9fb4d8'; ctx.font='19px Georgia'; ctx.textAlign='center';
+    ctx.fillText('Le mécanisme de bois — amène les 4 disques sur le piquet de droite', 512, 130);
+    ctx.fillStyle='#241f18'; ctx.fillRect(240,500,540,18);
+    const colors=['#b04f4f','#c98a3f','#5f8ab0','#7fb06b'];
+    for(let i=0;i<3;i++){
+      const x=this.pegX(i);
+      ctx.fillStyle = this.sel===i? '#d8b46a' : '#4a3826';
+      ctx.fillRect(x-7,220,14,290);
+      const peg=this.pegs[i];
+      for(let d=0;d<peg.length;d++){
+        const disk=peg[d], w=disk*38+40, y=490-d*28;
+        ctx.fillStyle = this.sel===i && d===peg.length-1 ? colors[4-disk] : colors[4-disk];
+        ctx.strokeStyle='#1a1610'; ctx.lineWidth=1;
+        rr(x-w/2, y, w, 24, 6); ctx.fill(); ctx.stroke();
+        if(this.sel===i && d===peg.length-1){
+          ctx.strokeStyle='#d8b46a'; ctx.lineWidth=2;
+          rr(x-w/2-4, y-4, w+8, 32, 8); ctx.stroke();
+        }
+      }
+    }
+    ctx.fillStyle='#5a6172'; ctx.font='13px system-ui,sans-serif';
+    ctx.fillText('clique un piquet pour prendre/poser · jamais un grand sur un petit · Échap pour fermer', 512, 555);
+    ctx.textAlign='left';
+  }
+};
 
-  function drawSelf() {
-    const cx = 405;
-    const lift = S.wakeAnim;      // 0 assis endormi → 1 debout face caméra
-    const sitY = 335;             // position tête assis
-    const standY = 175;
-    const headY = sitY + (standY - sitY) * lift;
-    const lean = (1 - lift) * 0.35; // inclinaison quand endormi
+// ============================== MÉCANIQUE DES ROUES (SALLE 8) ==============================
+const MCH = { discs:[5,2,6] };
 
-    ctx.save();
-    ctx.translate(cx, 0);
-    ctx.rotate(0);
+// ============================== CLAVIER GÉNÉRAL ==============================
+document.addEventListener('keydown', function(e){
+  if(G.scene!=='game') return;
+  if(e.key==='Escape'){
+    if(G.puzzle){ G.puzzle=null; return; }
+    const j=$('journal'); if(j.style.display==='block'){ j.style.display='none'; }
+  }
+  if(e.key==='j'||e.key==='J'){ $('btn-journal').onclick(); }
+  if(G.dlgOpen && (e.key===' '||e.key==='Enter')){ nextLine(); e.preventDefault(); }
+});
 
-    // corps
-    ctx.save();
-    ctx.translate(0, headY + 60);
-    ctx.rotate(lean * 0.5);
-    // torse
-    ctx.fillStyle = '#454b5e';
-    roundRect(-46, 0, 92, 130, 18); ctx.fill();
+// ============================== RENDU : COQUILLE DE PIÈCE ==============================
+function drawShell(pal){
+  const g=ctx.createLinearGradient(0,0,0,H);
+  g.addColorStop(0,pal[0]); g.addColorStop(0.72,pal[1]); g.addColorStop(1,pal[0]);
+  ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+  // texture murale
+  ctx.strokeStyle='rgba(255,255,255,0.025)'; ctx.lineWidth=1;
+  for(let x=40;x<W;x+=64){ ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x-34,460); ctx.stroke(); }
+  // sol
+  const fg=ctx.createLinearGradient(0,FLOOR_TOP,0,H);
+  fg.addColorStop(0,pal[2]); fg.addColorStop(1,'#0d0d10');
+  ctx.fillStyle=fg; ctx.fillRect(0,FLOOR_TOP,W,H-FLOOR_TOP);
+  ctx.strokeStyle='rgba(0,0,0,0.35)';
+  for(let i=0;i<13;i++){ ctx.beginPath(); ctx.moveTo(i*88-40,H); ctx.lineTo(i*108+70,FLOOR_TOP); ctx.stroke(); }
+  // plinthe
+  ctx.fillStyle='rgba(0,0,0,0.4)'; ctx.fillRect(0,FLOOR_TOP-10,W,10);
+}
+function drawLamp(cx, y, col, sway){
+  ctx.strokeStyle='#0d0f14'; ctx.lineWidth=3;
+  ctx.beginPath(); ctx.moveTo(cx,0); ctx.lineTo(cx,y); ctx.stroke();
+  const lg=ctx.createRadialGradient(cx+sway,y+18,8,cx,y+18,420);
+  lg.addColorStop(0,(col||'rgba(255,228,160,0.28)')); lg.addColorStop(0.5,'rgba(255,228,160,0.06)'); lg.addColorStop(1,'rgba(255,228,160,0)');
+  ctx.fillStyle=lg;
+  ctx.beginPath();
+  ctx.moveTo(cx+sway-12,y+8); ctx.lineTo(cx+sway+12,y+8);
+  ctx.lineTo(cx+300,470); ctx.lineTo(cx-300,470); ctx.closePath(); ctx.fill();
+  ctx.fillStyle='#ffe8a0'; ctx.beginPath(); ctx.arc(cx+sway,y+14,9,0,Math.PI*2); ctx.fill();
+}
+function drawDoorAt(x,y,w,h,open,accent){
+  if(open){
+    ctx.fillStyle='#020204'; ctx.fillRect(x,y,w,h);
+    ctx.strokeStyle=accent||'#3d4356'; ctx.lineWidth=6; ctx.strokeRect(x,y,w,h);
+    const clg=ctx.createLinearGradient(x-36,0,x+8,0);
+    clg.addColorStop(0,'rgba(255,220,150,0)'); clg.addColorStop(1,'rgba(255,220,150,0.16)');
+    ctx.fillStyle=clg; ctx.fillRect(x-36,y,44,h);
+    return;
+  }
+  ctx.strokeStyle=accent||'#3d4356'; ctx.lineWidth=8; ctx.strokeRect(x,y,w,h);
+  const dg=ctx.createLinearGradient(x,0,x+w,0);
+  dg.addColorStop(0,'#2a2e3d'); dg.addColorStop(0.5,'#383d4f'); dg.addColorStop(1,'#252936');
+  ctx.fillStyle=dg; ctx.fillRect(x+4,y+4,w-8,h-8);
+  ctx.strokeStyle='rgba(0,0,0,0.45)'; ctx.lineWidth=3;
+  rr(x+0.15*w,y+0.1*h,0.7*w,0.3*h,4); ctx.stroke();
+  rr(x+0.15*w,y+0.5*h,0.7*w,0.34*h,4); ctx.stroke();
+  ctx.fillStyle='#8a8f9e'; ctx.beginPath(); ctx.arc(x+w-22,y+h/2,6,0,Math.PI*2); ctx.fill();
+}
+function drawKeypadMini(x,y){
+  ctx.fillStyle='#141822'; rr(x,y,34,56,4); ctx.fill();
+  ctx.strokeStyle='#454c62'; ctx.lineWidth=2; rr(x,y,34,56,4); ctx.stroke();
+  ctx.fillStyle='#7fd18a'; ctx.fillRect(x+5,y+6,24,9);
+  ctx.fillStyle='#3a4154';
+  for(let r=0;r<3;r++) for(let c=0;c<3;c++) ctx.fillRect(x+6+c*9,y+20+r*11,7,8);
+}
+function silhouette(ctx2, x, y, s, opts){
+  ctx2.fillStyle=(opts&&opts.col)||'rgba(5,6,9,0.95)';
+  ctx2.beginPath(); ctx2.ellipse(x, y+0.55*s, 0.32*s, 0.5*s, 0, 0, Math.PI*2); ctx2.fill();
+  ctx2.beginPath(); ctx2.arc(x, y, 0.17*s, 0, Math.PI*2); ctx2.fill();
+}
+function drawVignette(){
+  const vg=ctx.createRadialGradient(W/2,H/2,H*0.35,W/2,H/2,H*0.9);
+  vg.addColorStop(0,'rgba(0,0,0,0)'); vg.addColorStop(1,'rgba(0,0,0,0.55)');
+  ctx.fillStyle=vg; ctx.fillRect(0,0,W,H);
+}
+
+// ============================== DÉCORS PAR PIÈCE ==============================
+const DECOR = [];
+DECOR[0]=function(pal){ // chambre
+  drawLamp(512,80,null,Math.sin(G.t/70)*4);
+  // vitre
+  const x=70,y=120;
+  ctx.fillStyle='#0a0d14'; rr(x,y,180,210,6); ctx.fill();
+  ctx.strokeStyle='#3d4356'; ctx.lineWidth=6; rr(x,y,180,210,6); ctx.stroke();
+  ctx.lineWidth=4; ctx.beginPath();
+  ctx.moveTo(x+90,y+4); ctx.lineTo(x+90,y+206); ctx.moveTo(x+4,y+105); ctx.lineTo(x+176,y+105); ctx.stroke();
+  ctx.strokeStyle='rgba(160,180,220,0.08)'; ctx.lineWidth=8;
+  ctx.beginPath(); ctx.moveTo(x+16,y+190); ctx.lineTo(x+150,y+22); ctx.stroke();
+  if(!G.flags.winSeen){ silhouette(ctx, x+92, y+120, 150); }
+  else if(Math.sin(G.t/40)>-0.6){ ctx.fillStyle='rgba(4,5,8,0.95)'; ctx.beginPath(); ctx.arc(x+150,y+105,7,0,Math.PI*2); ctx.fill(); }
+  // lit
+  ctx.fillStyle='#3a3d4c'; rr(300,290,200,110,10); ctx.fill();
+  ctx.fillStyle='#565a6e'; rr(300,268,200,40,10); ctx.fill();
+  ctx.fillStyle='#8a8f9e'; rr(286,272,54,44,8); ctx.fill();
+  // chaise
+  ctx.strokeStyle='#4a3826'; ctx.lineWidth=8;
+  ctx.beginPath();
+  ctx.moveTo(570,470); ctx.lineTo(590,340); ctx.moveTo(700,470); ctx.lineTo(680,340);
+  ctx.moveTo(582,400); ctx.lineTo(688,400); ctx.stroke();
+  ctx.fillStyle='#5c452e'; rr(574,338,122,20,6); ctx.fill();
+  ctx.strokeStyle='#4a3826'; ctx.lineWidth=10;
+  ctx.beginPath(); ctx.moveTo(584,336); ctx.lineTo(592,250); ctx.moveTo(686,336); ctx.lineTo(678,250); ctx.stroke();
+  ctx.fillStyle='#5c452e'; rr(588,244,92,30,6); ctx.fill();
+  if(!G.flags.note){ ctx.fillStyle='#e8e2d0'; ctx.beginPath();
+    ctx.moveTo(672,352); ctx.lineTo(692,348); ctx.lineTo(694,360); ctx.closePath(); ctx.fill(); }
+  // porte
+  drawDoorAt(820,110,150,360,G.flags.doorOpen0);
+  if(!G.flags.doorOpen0) drawKeypadMini(778,300);
+};
+DECOR[1]=function(){ // couloir
+  drawShell(ROOMS[1].pal);
+  const lit = G.flags.torch;
+  if(!lit){ ctx.fillStyle='rgba(4,5,8,0.72)'; ctx.fillRect(0,0,W,H); }
+  // porte-manteau
+  ctx.strokeStyle='#3a3020'; ctx.lineWidth=8;
+  ctx.beginPath(); ctx.moveTo(180,340); ctx.lineTo(180,510); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(140,360); ctx.lineTo(220,360); ctx.stroke();
+  if(G.flags.torch){ /* lampe prise */ } else {
+    ctx.save(); ctx.translate(160,382); ctx.rotate(0.5);
+    ctx.fillStyle='#8a8f9e'; rr(-8,-22,16,36,4); ctx.fill();
+    ctx.fillStyle='#ffe8a0'; ctx.beginPath(); ctx.arc(0,-24,7,0,Math.PI*2); ctx.fill();
     ctx.restore();
-
-    // bras : pendouillent quand endormi, croisés quand debout
-    ctx.strokeStyle = '#454b5e'; ctx.lineWidth = 18; ctx.lineCap = 'round';
-    if (lift < 0.9) {
-      ctx.beginPath();
-      ctx.moveTo(-38, headY + 80); ctx.lineTo(-52, headY + 180);
-      ctx.moveTo(38, headY + 80); ctx.lineTo(52, headY + 180);
-      ctx.stroke();
-    } else {
-      ctx.beginPath();
-      ctx.moveTo(-38, headY + 80); ctx.lineTo(-16, headY + 150); ctx.lineTo(16, headY + 138);
-      ctx.moveTo(38, headY + 80); ctx.lineTo(18, headY + 150); ctx.lineTo(-12, headY + 142);
-      ctx.stroke();
-    }
-
-    // jambes si debout
-    if (lift > 0.2) {
-      const jUp = (lift - 0.2) / 0.8;
-      ctx.strokeStyle = '#2c3140'; ctx.lineWidth = 20;
-      ctx.beginPath();
-      ctx.moveTo(-22, headY + 185); ctx.lineTo(-26, headY + 185 + 130 * jUp);
-      ctx.moveTo(22, headY + 185); ctx.lineTo(26, headY + 185 + 130 * jUp);
-      ctx.stroke();
-    }
-
-    // tête
-    ctx.save();
-    ctx.translate(0, headY);
-    ctx.rotate(lean);
-    ctx.fillStyle = '#c9a188';
-    ctx.beginPath(); ctx.arc(0, 0, 34, 0, Math.PI * 2); ctx.fill();
-    // cheveux sombres ébouriffés
-    ctx.fillStyle = '#241d18';
-    ctx.beginPath();
-    ctx.arc(0, -8, 35, Math.PI * 0.95, Math.PI * 2.15);
-    ctx.quadraticCurveTo(30, -28, 8, -34);
-    ctx.quadraticCurveTo(-26, -36, -33, -14);
-    ctx.closePath(); ctx.fill();
-    // yeux : fermés au début, clignent ensuite
-    const blink = (S.time % 260) < 12 ? 0.15 : 1;
-    const openEyes = lift > 0.5 ? blink : 0;
-    if (openEyes > 0.2) {
-      ctx.fillStyle = '#f4efe9';
-      ctx.beginPath(); ctx.ellipse(-12, 2, 7, 5 * openEyes, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.beginPath(); ctx.ellipse(12, 2, 7, 5 * openEyes, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#20242e';
-      ctx.beginPath(); ctx.arc(-12, 2, 3, 0, Math.PI * 2); ctx.fill();
-      ctx.beginPath(); ctx.arc(12, 2, 3, 0, Math.PI * 2); ctx.fill();
-    } else {
-      ctx.strokeStyle = '#3a2e24'; ctx.lineWidth = 2.5;
-      ctx.beginPath();
-      ctx.moveTo(-18, 2); ctx.lineTo(-6, 2);
-      ctx.moveTo(6, 2); ctx.lineTo(18, 2);
-      ctx.stroke();
-    }
-    // bouche
-    ctx.strokeStyle = '#7a5648'; ctx.lineWidth = 2.5;
-    ctx.beginPath();
-    if (lift < 0.5) { ctx.moveTo(-7, 20); ctx.lineTo(7, 20); }
-    else ctx.arc(0, 14, 8, 0.25 * Math.PI, 0.75 * Math.PI);
-    ctx.stroke();
-    // hématome
-    ctx.fillStyle = 'rgba(120,70,90,0.4)';
-    ctx.beginPath(); ctx.ellipse(20, -12, 9, 6, 0.3, 0, Math.PI * 2); ctx.fill();
-    ctx.restore();
-
-    // zzz pendant le sommeil
-    if (S.wakeAnim < 0.5) {
-      ctx.fillStyle = 'rgba(200,210,240,' + (0.5 - S.wakeAnim) + ')';
-      ctx.font = '20px Georgia';
-      const fl = Math.sin(S.time / 25) * 6;
-      ctx.fillText('z', 48 + fl, headY - 40);
-      ctx.font = '26px Georgia';
-      ctx.fillText('Z', 66 + fl, headY - 68);
-    }
-    ctx.restore();
   }
-
-  function drawNoteHint() {
-    // coin de papier qui dépasse du coussin si pas encore trouvé
-    if (!S.noteFound && S.awake) {
-      ctx.fillStyle = '#e8e2d0';
-      ctx.beginPath();
-      ctx.moveTo(446, 372); ctx.lineTo(468, 368); ctx.lineTo(470, 382); ctx.closePath();
-      ctx.fill();
+  // tableaux
+  const paint = function(x, type){
+    ctx.fillStyle='#2a2418'; ctx.strokeStyle='#6b5a3a'; ctx.lineWidth=6;
+    rr(x,150,110,130,4); ctx.fill(); ctx.stroke();
+    ctx.fillStyle='#101018'; ctx.fillRect(x+8,158,94,114);
+    if(lit){ PZ.sym.drawGlyph(type, x+55, 215, 80); }
+  };
+  paint(300,'lune'); paint(430,'étoile'); paint(560,'soleil');
+  // griffon
+  ctx.fillStyle='#3c3f4c';
+  ctx.beginPath(); ctx.ellipse(510,556,58,26,0,0,Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(510,528,20,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='#c8cede';
+  ctx.beginPath(); ctx.moveTo(496,522); ctx.lineTo(500,508); ctx.lineTo(506,520);
+  ctx.moveTo(524,522); ctx.lineTo(520,508); ctx.lineTo(514,520); ctx.fill();
+  if(G.flags.torch){
+    // cône de torche
+    const px=G.player.x+ (G.player.dir>0?30:-30), py=G.player.y-40;
+    const tg=ctx.createRadialGradient(px,py,5,px,py,260);
+    tg.addColorStop(0,'rgba(255,230,160,0.25)'); tg.addColorStop(1,'rgba(255,230,160,0)');
+    ctx.fillStyle=tg;
+    ctx.beginPath(); ctx.moveTo(px,py);
+    const a0=Math.atan2(150-py, 510-px);
+    ctx.arc(px,py,300,a0-0.6,a0+0.6); ctx.closePath(); ctx.fill();
+  }
+  drawDoorAt(850,120,130,350,G.flags.doorOpen1);
+  if(!G.flags.doorOpen1){ // cadran sur la porte
+    ctx.fillStyle='#d8b46a'; ctx.font='13px Georgia'; ctx.textAlign='center';
+    ctx.fillText('☾ ✶ ☀', 915, 250); ctx.textAlign='left';
+  }
+};
+DECOR[2]=function(){ // bibliothèque
+  drawShell(ROOMS[2].pal);
+  drawLamp(512,90,'rgba(255,220,150,0.22)',Math.sin(G.t/80)*3);
+  // étagères
+  for(const bx of [80,190,300,660,770,880]){
+    ctx.fillStyle='#241d12'; ctx.fillRect(bx,120,58,300);
+    ctx.fillStyle='#3a2f1c'; ctx.fillRect(bx-6,160,70,10); ctx.fillRect(bx-6,270,70,10); ctx.fillRect(bx-6,380,70,10);
+    ctx.fillStyle='#4a3c24';
+    for(let r=0;r<3;r++) for(let c=0;c<3;c++){
+      if(Math.random()<0){} // décor fixe dessiné ci-dessous
     }
   }
-
-  function drawVignette() {
-    const vg = ctx.createRadialGradient(W / 2, H / 2, H * 0.35, W / 2, H / 2, H * 0.85);
-    vg.addColorStop(0, 'rgba(0,0,0,0)');
-    vg.addColorStop(1, 'rgba(0,0,0,0.55)');
-    ctx.fillStyle = vg;
-    ctx.fillRect(0, 0, W, H);
-  }
-
-  function drawLabel() {
-    if (!S.awake || talking) return;
-    // affiché via le curseur : rien ici, mais titre discret
-    ctx.fillStyle = 'rgba(216,220,234,0.25)';
-    ctx.font = '14px system-ui, sans-serif';
-    ctx.fillText('LE RÉVEIL — chapitre 1', 18, 26);
-  }
-
-  function frame() {
-    S.time++;
-    if (S.awake && S.wakeAnim < 1) S.wakeAnim = Math.min(1, S.wakeAnim + 0.008);
-
-    ctx.clearRect(0, 0, W, H);
-    drawRoom();
-    drawWindow();
-    drawDoor();
-    drawChair();
-    drawNoteHint();
-    drawSelf();
-    drawVignette();
-    drawLabel();
-    requestAnimationFrame(frame);
-  }
-  frame();
-})();
-</script>
-</body>
-</html>
+  // livres décoratifs
+  const deco=function(x,y,n){ for(let i=0;i<n;i++){ ctx.fillStyle=['#6b3f2f','#3f5a6b','#6b5a2f','#4a2f4f'][ (i*7+x)%4 ];
+    ctx.fillRect(x+i*9,y-22,7,22); } };
+  deco(96,160,5); deco(206,160,5); deco(316,160,5);
+  deco(96,380,5); deco(206,380,5); deco(316,380,5);
+  deco(676,160,5); deco(786,160,5); deco(896,160,4);
+  deco(676,380,5); deco(786,380,5); deco(896,380,4);
+  // livres sortants (interactifs)
+  const F=G.flags, out=F.books||[];
+  const ibook=function(x,coul,label,sorti){
+    ctx.fillStyle=coul;
+    ctx.fillRect(x,180-(sorti?18:0),52,110+(sorti?18:0));
+    ctx.strokeStyle='#1a140c'; ctx.strokeRect(x,180-(sorti?18:0),52,110+(sorti?18:0));
+    ctx.fillStyle='rgba(255,255,255,0.25)'; ctx.fillRect(x+8,196-(sorti?18:0),36,5);
+    ctx.fillRect(x+8,208-(sorti?18:0),36,5);
+  };
